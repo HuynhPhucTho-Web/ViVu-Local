@@ -1,0 +1,126 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ======================
+    ====================== */
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+    }
+
+    function isBuddy() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "buddy";
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    /* ======================
+       👤 USERS
+    ====================== */
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /* ======================
+       🌍 DESTINATIONS
+    ====================== */
+
+    match /destinations/{destinationId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /* ======================
+       ✍️ REVIEWS
+       (linh hồn của ViVuLocal)
+    ====================== */
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.cost > 0
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5;
+
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+
+      allow delete: if isAdmin();
+    }
+
+    /* ======================
+       🧭 LOCAL BUDDY
+    ====================== */
+
+    match /buddies/{buddyId} {
+      allow read: if true;
+
+      allow create: if isOwner(buddyId)
+        && isBuddy();
+
+      allow update: if isOwner(buddyId) || isAdmin();
+
+      allow delete: if isAdmin();
+    }
+
+    /* ======================
+       📅 BOOKINGS
+       (Book Local Buddy)
+    ====================== */
+
+    match /bookings/{bookingId} {
+      allow read: if isSignedIn()
+        && (resource.data.userId == request.auth.uid
+            || resource.data.buddyId == request.auth.uid
+            || isAdmin());
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+
+      allow update: if isSignedIn()
+        && (resource.data.userId == request.auth.uid
+            || resource.data.buddyId == request.auth.uid);
+
+      allow delete: if isAdmin();
+    }
+
+    /* ======================
+       💬 CHAT
+    ====================== */
+
+    match /chats/{chatId} {
+      allow read, write: if isSignedIn()
+        && request.auth.uid in resource.data.participants;
+    }
+
+    match /messages/{messageId} {
+      allow read, create: if isSignedIn()
+        && request.auth.uid == request.resource.data.senderId;
+    }
+
+    /* ======================
+
+    ====================== */
+
+    match /tripPlans/{planId} {
+      allow read, write: if isSignedIn()
+        && request.auth.uid == resource.data.userId;
+    }
+
+  }
+}
