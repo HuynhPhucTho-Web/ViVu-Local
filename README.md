@@ -124,15 +124,24 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 For questions or support, please reach out to [your-email@example.com](mailto:your-email@example.com).
 
 Dưới đây là bảng tổng hợp chi tiết:
-Tên RoleĐối tượngTrang Dashboard chínhChức năng chính
+
+Tên Role Đối tượng Trang Dashboard chính Chức năng chính
 ## Admin
- Bạn (Chủ Web)/admin Duyệt bài đối tác, quản lý người dùng, xóa nội dung xấu, xem tổng quan hệ thống.
+mail: admin@gmail.com
+pass: Admin@123456
+ - Bạn (Chủ Web)/admin Duyệt bài đối tác, quản lý người dùng, xóa nội dung xấu, xem tổng quan hệ thống.
 ## Manager
- Đối tác (Khu du lịch)/partner/dashboardĐăng ký khu du lịch, cập nhật giá vé/giờ mở cửa, theo dõi lượng quan tâm của khách.
+mail: manager@gmail.com
+pass: Manager@123456
+ - Đối tác (Khu du lịch)/partner/dashboard Đăng ký khu du lịch, cập nhật giá vé/giờ mở cửa, theo dõi lượng quan tâm của khách.
 ## Buddy
- Hướng dẫn viên/buddy-dashboardĐăng hồ sơ cá nhân, nhận yêu cầu dẫn tour, chat với khách du lịch.
+mail: buddy@gmail.com
+pass: Buddy@123456
+ - Hướng dẫn viên/buddy-dashboard Đăng hồ sơ cá nhân, nhận yêu cầu dẫn tour, chat với khách du lịch.
 ## User
-Khách du lịch/profileXem tin tức, đăng bài lên cộng đồng (Social), bình luận, thả tim, đặt lịch với Buddy.
+Tự đăng ký được tài khoản bằng google hay tạo thủ công
+ - Khách du lịch/profileXem tin tức, đăng bài lên cộng đồng (Social), bình luận, thả tim, đặt lịch với Buddy.
+
 
 npm install -g firebase-tools
 
@@ -212,3 +221,6 @@ Nền tảng thu tiền từ 3 luồng chính:
 
 ---
 *Last update: Jan 2026*
+
+Project Console: https://console.firebase.google.com/project/vivulocal/overview
+Hosting URL: https://vivulocal.web.app

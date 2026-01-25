@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Star, MessageCircle, MapPin, CheckCircle, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../components/firebase";
 
 const LocalBuddy = () => {
@@ -11,11 +11,22 @@ const LocalBuddy = () => {
   useEffect(() => {
     const fetchBuddies = async () => {
       try {
-        const snapshot = await getDocs(collection(db, "buddies"));
+        // Truy vấn collection 'users' tìm những người có role là 'buddy'
+        const q = query(collection(db, "users"), where("role", "==", "buddy"));
+        const snapshot = await getDocs(q);
+
         const data = snapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
+          // Đảm bảo các trường dữ liệu có giá trị mặc định nếu database chưa có
+          rating: doc.data().rating || "5.0",
+          reviews: doc.data().reviews || 0,
+          status: doc.data().status || "available",
+          price: doc.data().price || "Thỏa thuận",
+          specialty: doc.data().specialty || "Văn hóa & Ẩm thực",
+          languages: doc.data().languages || ["Tiếng Việt"]
         }));
+
         setBuddies(data);
       } catch (err) {
         console.error("Lỗi tải buddy:", err);
@@ -37,7 +48,7 @@ const LocalBuddy = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        
+
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
@@ -57,28 +68,29 @@ const LocalBuddy = () => {
               className="bg-white rounded-2xl shadow-md hover:shadow-xl transition border block group"
             >
               <div className="p-6">
-                
+
                 {/* Top */}
                 <div className="flex justify-between mb-6">
                   <div className="flex items-center">
                     <div className="relative">
                       <img
-                        src={buddy.image}
+                        src={buddy.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(buddy.name || 'Buddy')}&background=random`}
                         alt={buddy.name}
                         className="w-16 h-16 rounded-full object-cover border-2 border-orange-100 mr-4"
+                        onError={(e) => { e.target.src = "https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png" }}
                       />
                       <span
-                        className={`absolute bottom-0 right-4 w-4 h-4 rounded-full border-2 border-white ${
-                          buddy.status === "available"
-                            ? "bg-green-500"
-                            : "bg-red-500"
-                        }`}
+                        className={`absolute bottom-0 right-4 w-4 h-4 rounded-full border-2 border-white ${buddy.status === "available"
+                          ? "bg-green-500"
+                          : "bg-red-500"
+                          }`}
                       />
                     </div>
 
                     <div>
-                      <h3 className="text-xl font-bold group-hover:text-orange-500">
-                        {buddy.name}
+                      {/* Thay vì chỉ dùng {buddy.name}, hãy làm thế này */}
+                      <h3 className="text-xl font-bold group-hover:text-orange-500 truncate max-w-[150px]">
+                        {buddy.name || buddy.displayName || buddy.email.split('@')[0]}
                       </h3>
                       <div className="flex items-center text-sm text-gray-500">
                         <MapPin className="w-3 h-3 mr-1" />
@@ -102,11 +114,10 @@ const LocalBuddy = () => {
 
                 {/* Status */}
                 <div
-                  className={`mb-4 px-3 py-2 rounded-lg text-xs flex items-center ${
-                    buddy.status === "available"
-                      ? "bg-green-50 text-green-700"
-                      : "bg-red-50 text-red-700"
-                  }`}
+                  className={`mb-4 px-3 py-2 rounded-lg text-xs flex items-center ${buddy.status === "available"
+                    ? "bg-green-50 text-green-700"
+                    : "bg-red-50 text-red-700"
+                    }`}
                 >
                   {buddy.status === "available" ? (
                     <>

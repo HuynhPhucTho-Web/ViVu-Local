@@ -1,29 +1,62 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Upload, Loader2, MapPin, ImageIcon } from 'lucide-react';
 import { uploadToCloudinary } from '../data/cloudinary';
 import { destinations } from '../data/mockData';
 
 const CreatePostModal = ({ isOpen, onClose, onSubmit, initialData }) => {
-  const [formData, setFormData] = useState({ title: '', content: '', location: '', image: '' });
+  const [formData, setFormData] = useState({ title: '', content: '', location: '', images: [] });
   const [loading, setLoading] = useState(false);
+  const interactionRef = useRef(false);
 
   useEffect(() => {
-    if (initialData) setFormData(initialData);
-    else setFormData({ title: '', content: '', location: '', image: '' });
+    if (initialData) {
+      setFormData({
+        ...initialData,
+        images: initialData.images || (initialData.image ? [initialData.image] : [])
+      });
+    } else {
+      setFormData({ title: '', content: '', location: '', images: [] });
+    }
   }, [initialData, isOpen]);
 
+  // Auto-close modal after 5 seconds if not interacted with
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        if (!interactionRef.current) {
+          onClose();
+        }
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, onClose]);
+
   const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
     setLoading(true);
     try {
-      const result = await uploadToCloudinary(file);
-      setFormData({ ...formData, image: result.secure_url });
+      const uploadPromises = files.map(file => uploadToCloudinary(file));
+      const results = await Promise.all(uploadPromises);
+      const newImageUrls = results.map(result => result.secure_url);
+
+      setFormData(prev => ({
+        ...prev,
+        images: [...(prev.images || []), ...newImageUrls]
+      }));
     } catch (err) {
       alert("Lỗi tải ảnh!");
     } finally {
       setLoading(false);
     }
+  };
+
+  const removeImage = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -103,43 +136,55 @@ const CreatePostModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               />
             </div>
 
-            {/* Media Upload Area: Cải tiến gọn nhẹ hơn */}
+            {/* Media Upload Area: Hỗ trợ nhiều ảnh */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-400 uppercase ml-1">Hình ảnh chuyến đi</label>
-              
-              {formData.image ? (
-                <div className="relative rounded-2xl overflow-hidden border border-gray-100 shadow-inner group bg-gray-100">
-                  {/* Cố định chiều cao ảnh preview để không đẩy nút đi quá xa */}
-                  <img src={formData.image} className="w-full h-48 object-cover" alt="preview" />
-                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button 
-                      type="button" 
-                      onClick={() => setFormData({...formData, image: ''})} 
-                      className="bg-red-500 text-white p-2 rounded-full hover:scale-110 transition-transform shadow-lg"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <label className="border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-orange-50 hover:border-orange-200 transition-all cursor-pointer group">
-                  {loading ? (
-                    <div className="flex flex-col items-center">
-                      <Loader2 className="animate-spin text-orange-500 mb-2" />
-                      <span className="text-xs text-gray-500 font-medium">Đang tải ảnh lên...</span>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="bg-orange-100 p-3 rounded-full text-orange-600 mb-2 group-hover:scale-110 transition-transform">
-                        <Upload size={24} />
+
+              {/* Hiển thị ảnh đã chọn */}
+              {formData.images && formData.images.length > 0 && (
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  {formData.images.map((imageUrl, index) => (
+                    <div key={index} className="relative rounded-xl overflow-hidden border border-gray-100 shadow-inner group bg-gray-100">
+                      <img src={imageUrl} className="w-full h-24 object-cover" alt={`preview-${index}`} />
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="bg-red-500 text-white p-1.5 rounded-full hover:scale-110 transition-transform shadow-lg"
+                        >
+                          <X size={14} />
+                        </button>
                       </div>
-                      <span className="text-sm font-semibold text-gray-600">Thêm hình ảnh đẹp</span>
-                      <span className="text-[10px] text-gray-400 mt-1">Hỗ trợ JPG, PNG, WEBP</span>
-                    </>
-                  )}
-                  <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} disabled={loading} />
-                </label>
+                    </div>
+                  ))}
+                </div>
               )}
+
+              {/* Upload area */}
+              <label className="border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-orange-50 hover:border-orange-200 transition-all cursor-pointer group">
+                {loading ? (
+                  <div className="flex flex-col items-center">
+                    <Loader2 className="animate-spin text-orange-500 mb-2" />
+                    <span className="text-xs text-gray-500 font-medium">Đang tải ảnh lên...</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="bg-orange-100 p-3 rounded-full text-orange-600 mb-2 group-hover:scale-110 transition-transform">
+                      <Upload size={24} />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-600">Thêm hình ảnh</span>
+                    <span className="text-[10px] text-gray-400 mt-1">Có thể chọn nhiều ảnh (JPG, PNG, WEBP)</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileChange}
+                  disabled={loading}
+                />
+              </label>
             </div>
           </div>
 

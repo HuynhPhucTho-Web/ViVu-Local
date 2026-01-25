@@ -1,177 +1,196 @@
-import { useState } from 'react';
-import { MapPin, ArrowRight, Star, DollarSign } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MapPin, ArrowRight, Star, DollarSign, Search, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { destinations } from '../data/mockData'
+import { db } from '../components/firebase';
+import { collection, getDocs, query, where, limit } from 'firebase/firestore';
 
 const Home = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [budget, setBudget] = useState('');
+  const [destinations, setDestinations] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // 1. Lấy dữ liệu thật từ Firebase
+  useEffect(() => {
+    const fetchDestinations = async () => {
+      try {
+        const q = query(
+          collection(db, "destinations"),
+          where("status", "==", "approved"), // Chỉ lấy bài đã duyệt
+          limit(6)
+        );
+        const querySnapshot = await getDocs(q);
+        const data = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setDestinations(data);
+      } catch (error) {
+        console.error("Error fetching destinations:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDestinations();
+  }, []);
+
+  // 2. Xử lý tìm kiếm thông minh
   const handleSearch = () => {
-    if (searchTerm.trim()) {
-      navigate(`/discovery?search=${encodeURIComponent(searchTerm)}`);
-    }
+    const params = new URLSearchParams();
+    if (searchTerm) params.append('search', searchTerm);
+    if (budget) params.append('budget', budget);
+    
+    navigate(`/discovery?${params.toString()}`);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <header className="relative h-[600px] flex items-center justify-center text-white">
+      <header className="relative h-[650px] flex items-center justify-center text-white">
         <div className="absolute inset-0 bg-black/40 z-10" />
         <img
-          src="https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80"
+          src="https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=1200&q=80"
           alt="Vietnam Landscape"
           className="absolute inset-0 w-full h-full object-cover"
         />
         
-        <div className="relative z-20 text-center px-4 max-w-4xl mx-auto">
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 tracking-tight">
+        <div className="relative z-20 text-center px-4 max-w-4xl mx-auto animate-in fade-in zoom-in duration-700">
+          <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter italic">
             ViVuLocal – Chạm vào bản sắc
           </h1>
-          <p className="text-xl md:text-2xl mb-8 font-light">
+          <p className="text-xl md:text-2xl mb-12 font-medium text-gray-100">
             Đi như người bản địa, trải nghiệm như người bản xứ
           </p>
           
-          {/* Smart Search */}
-          <div className="bg-white p-2 rounded-full shadow-2xl flex flex-col md:flex-row items-center max-w-3xl mx-auto">
-            <div className="flex-1 flex items-center px-6 py-3 w-full border-b md:border-b-0 md:border-r border-gray-200">
-              <MapPin className="text-gray-400 mr-3 h-5 w-5" />
+          {/* Smart Search Bar */}
+          <div className="bg-white/95 backdrop-blur-md p-2 rounded-[32px] shadow-2xl flex flex-col md:flex-row items-center max-w-3xl mx-auto border border-white/20">
+            <div className="flex-1 flex items-center px-6 py-4 w-full border-b md:border-b-0 md:border-r border-gray-100">
+              <MapPin className="text-orange-500 mr-3 h-5 w-5" />
               <input 
                 type="text" 
                 placeholder="Bạn muốn đi đâu?" 
-                className="w-full outline-none text-gray-800 placeholder-gray-400"
+                className="w-full outline-none text-gray-800 placeholder-gray-400 bg-transparent font-bold"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
             </div>
-            <div className="flex-1 flex items-center px-6 py-3 w-full border-b md:border-b-0 md:border-r border-gray-200">
-              <DollarSign className="text-gray-400 mr-3 h-5 w-5" />
-              <select className="w-full outline-none text-gray-800 bg-transparent cursor-pointer">
-                <option value="">Ngân sách</option>
-                <option value="low">Tiết kiệm</option>
-                <option value="medium">Trung bình</option>
-                <option value="high">Sang trọng</option>
+            <div className="flex-1 flex items-center px-6 py-4 w-full">
+              <DollarSign className="text-green-500 mr-3 h-5 w-5" />
+              <select 
+                className="w-full outline-none text-gray-800 bg-transparent cursor-pointer font-bold appearance-none"
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
+              >
+                <option value="">Tất cả ngân sách</option>
+                <option value="low">Tiết kiệm (Dưới 500k)</option>
+                <option value="medium">Trung bình (500k - 2Tr)</option>
+                <option value="high">Sang trọng (Trên 2Tr)</option>
               </select>
             </div>
             <button 
               onClick={handleSearch}
-              className="bg-orange-500 text-white px-8 py-3 rounded-full font-bold hover:bg-orange-600 transition-all m-1 w-full md:w-auto shadow-md"
+              className="bg-orange-500 text-white px-10 py-4 rounded-[24px] font-black hover:bg-orange-600 transition-all m-1 w-full md:w-auto shadow-lg active:scale-95 flex items-center justify-center gap-2"
             >
-              Khám phá
+              <Search size={20} /> KHÁM PHÁ
             </button>
           </div>
         </div>
       </header>
 
       {/* Section 1: Featured Destinations */}
-      <section className="py-16 px-4 max-w-7xl mx-auto">
-        <div className="flex justify-between items-end mb-8">
+      <section className="py-20 px-4 max-w-7xl mx-auto">
+        <div className="flex justify-between items-end mb-12">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Điểm đến tiêu biểu</h2>
-            <p className="text-gray-600">Những vùng đất đang được cộng đồng yêu thích nhất</p>
+            <h2 className="text-4xl font-black text-gray-900 mb-2 uppercase tracking-tighter">Điểm đến tiêu biểu</h2>
+            <p className="text-gray-500 font-medium">Những vùng đất đang được cộng đồng yêu thích nhất</p>
           </div>
-          <Link to="/discovery" className="text-orange-500 font-semibold flex items-center hover:underline">
-            Xem tất cả <ArrowRight className="ml-1 h-4 w-4" />
+          <Link to="/discovery" className="bg-white border border-gray-200 px-6 py-3 rounded-2xl text-orange-500 font-bold flex items-center hover:bg-orange-50 transition-all shadow-sm">
+            Xem tất cả <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {destinations.map((place) => (
-            <Link key={place.id} to={`/destination/${place.id}`} className="group relative rounded-2xl overflow-hidden shadow-lg h-80 cursor-pointer block">
-              <img src={place.img} alt={place.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 p-6 text-white">
-                <h3 className="text-2xl font-bold mb-1">{place.name}</h3>
-                <p className="text-gray-200 text-sm">{place.desc}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="animate-spin text-orange-500" size={40} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {destinations.map((place) => (
+              <Link 
+                key={place.id} 
+                to={`/destination/${place.id}`} 
+                className="group relative rounded-[32px] overflow-hidden shadow-xl h-[450px] cursor-pointer block hover:-translate-y-2 transition-all duration-500"
+              >
+                <img 
+                  src={place.image || "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80"} 
+                  alt={place.title} 
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                <div className="absolute bottom-0 left-0 p-8 text-white w-full">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="bg-orange-500 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
+                      {place.category || 'Du lịch'}
+                    </span>
+                    <span className="flex items-center gap-1 text-xs font-bold text-yellow-400">
+                      <Star size={14} fill="currentColor" /> {place.rating || '5.0'}
+                    </span>
+                  </div>
+                  <h3 className="text-3xl font-black mb-2 leading-tight">{place.title}</h3>
+                  <div className="flex items-center gap-1 text-gray-300 text-sm font-medium">
+                    <MapPin size={14} /> {place.location}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Section 2: Local Buddy Teaser */}
-      <section className="bg-orange-50 py-16">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center gap-12">
-          <div className="md:w-1/2">
-            <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=800&q=80" alt="Local Buddy" className="rounded-2xl shadow-2xl w-full object-cover h-[500px]" />
+      <section className="bg-slate-900 py-24 text-white overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center gap-16">
+          <div className="md:w-1/2 relative">
+            <div className="absolute -top-10 -left-10 w-40 h-40 bg-orange-500/20 rounded-full blur-3xl" />
+            <img 
+              src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=800&q=80" 
+              alt="Local Buddy" 
+              className="rounded-[40px] shadow-2xl w-full object-cover h-[550px] relative z-10 border border-white/10" 
+            />
           </div>
           <div className="md:w-1/2">
-            <span className="text-orange-500 font-bold tracking-wider uppercase text-sm">Local Buddy</span>
-            <h2 className="text-4xl font-bold text-gray-900 mt-2 mb-6">Tìm người dẫn đường am hiểu địa phương</h2>
-            <p className="text-gray-600 text-lg mb-8 leading-relaxed">
-              Thay vì những tour đoàn cứng nhắc, hãy đặt các "Local Buddy" – những người bạn địa phương am hiểu từng ngóc ngách, quán ăn ngon và câu chuyện lịch sử thú vị.
+            <span className="text-orange-500 font-black tracking-widest uppercase text-sm">Kết nối bản địa</span>
+            <h2 className="text-5xl font-black mt-4 mb-8 leading-tight">Khám phá qua đôi mắt người bản xứ</h2>
+            <p className="text-gray-400 text-lg mb-10 leading-relaxed">
+              Quên đi những tấm bản đồ vô hồn. Hãy để các <b>Local Buddy</b> đồng hành cùng bạn trên những con hẻm nhỏ, quán ăn không tên nhưng vị ngon khó cưỡng.
             </p>
             
-            <div className="space-y-4 mb-8">
-              <div className="flex items-start">
-                <div className="bg-white p-2 rounded-full shadow-sm mr-4">
-                  <Star className="h-6 w-6 text-yellow-400 fill-current" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-gray-900">Đánh giá thực tế</h4>
-                  <p className="text-sm text-gray-500">Chỉ khách đã đi mới được review</p>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
+              <div className="bg-white/5 p-6 rounded-3xl border border-white/10">
+                <Star className="h-8 w-8 text-yellow-400 fill-current mb-3" />
+                <h4 className="font-bold text-xl mb-1">Tin cậy 100%</h4>
+                <p className="text-sm text-gray-500">Đánh giá thật từ khách đã trải nghiệm</p>
               </div>
-              <div className="flex items-start">
-                <div className="bg-white p-2 rounded-full shadow-sm mr-4">
-                  <DollarSign className="h-6 w-6 text-green-500" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-gray-900">Chi phí minh bạch</h4>
-                  <p className="text-sm text-gray-500">Giá niêm yết theo giờ hoặc theo ngày</p>
-                </div>
+              <div className="bg-white/5 p-6 rounded-3xl border border-white/10">
+                <DollarSign className="h-8 w-8 text-green-500 mb-3" />
+                <h4 className="font-bold text-xl mb-1">Giá linh hoạt</h4>
+                <p className="text-sm text-gray-500">Đặt theo giờ hoặc theo hành trình</p>
               </div>
             </div>
             
-            <Link to="/buddy" className="inline-block bg-gray-900 text-white px-8 py-3 rounded-full font-bold hover:bg-gray-800 transition">
+            <Link to="/buddy" className="inline-block bg-orange-500 text-white px-10 py-4 rounded-full font-black hover:bg-orange-600 transition shadow-xl shadow-orange-500/20 active:scale-95 uppercase tracking-tighter">
               Tìm Buddy ngay
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Section 3: Discovery Teaser */}
-      <section className="py-16 px-4 max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Review "Chất" từ cộng đồng</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Khám phá những địa điểm ăn uống, vui chơi được đánh giá chân thực nhất với thông tin chi phí cụ thể.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <Link to="/review/1" className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition block">
-            <div className="h-48 overflow-hidden">
-              <img src="https://images.unsplash.com/photo-1626015094736-249ac895f6fd?auto=format&fit=crop&w=800&q=80" alt="Banh Mi" className="w-full h-full object-cover hover:scale-105 transition duration-500" />
-            </div>
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-2">
-                <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">#Ngon_Bổ_Rẻ</span>
-                <span className="flex items-center text-yellow-500 text-sm font-bold">
-                  <Star className="h-4 w-4 fill-current mr-1" /> 4.8
-                </span>
-              </div>
-              <h3 className="text-xl font-bold mb-2">Bánh mì Phượng - Hội An</h3>
-              <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                Vị nước sốt đậm đà, pate béo ngậy. Xếp hàng hơi lâu nhưng rất đáng công chờ đợi.
-              </p>
-              <div className="flex justify-between items-center border-t pt-4">
-                <span className="text-gray-500 text-sm">Tổng chi phí:</span>
-                <span className="text-orange-600 font-bold">35.000đ</span>
-              </div>
-            </div>
-          </Link>
-          
-          {/* More mock cards would go here */}
-        </div>
-        
-        <div className="text-center mt-10">
-          <Link to="/discovery" className="text-orange-500 font-bold hover:underline">
-            Xem thêm hàng ngàn review khác
-          </Link>
-        </div>
-      </section>
+      {/* Footer đơn giản */}
+      <footer className="py-10 text-center text-gray-400 text-sm border-t">
+        <p>© 2024 ViVuLocal - Trải nghiệm du lịch bản sắc Việt</p>
+      </footer>
     </div>
   );
 };

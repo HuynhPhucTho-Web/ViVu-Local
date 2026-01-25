@@ -19,7 +19,7 @@ const Social = () => {
 
   useEffect(() => {
     const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
-    
+
     // Lắng nghe dữ liệu real-time
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const postsData = snapshot.docs.map(doc => ({
@@ -37,16 +37,21 @@ const Social = () => {
   }, []);
 
   const handleCreatePost = async (postData) => {
-    if (!user) return alert("Bạn cần đăng nhập!");
-    await addDoc(collection(db, 'posts'), {
-      ...postData,
-      author: user.name,
-      authorId: user.uid,
-      authorAvatar: user.photoURL || '',
-      likes: [], // Mảng chứa UID những người đã like
-      comments: [],
-      timestamp: new Date().toISOString()
-    });
+    if (!user || !user.id) return alert("Bạn cần đăng nhập!");
+    try {
+      await addDoc(collection(db, 'posts'), {
+        ...postData,
+        author: user.name || user.email.split('@')[0],
+        authorId: user.id,
+        authorAvatar: user.photoURL || '',
+        likes: [],
+        comments: [],
+        timestamp: new Date().toISOString()
+      });
+    } catch (e) {
+      alert("Lỗi khi đăng bài!");
+      console.error(e);
+    }
   };
 
   const handleUpdatePost = async (postData) => {
