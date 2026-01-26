@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Upload, Loader2, Info, CreditCard, Languages, MapPin } from 'lucide-react';
-import { db, storage, auth } from '../components/firebase'; 
+import { db, auth } from '../components/firebase';
 import { collection, addDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadToCloudinary } from "../data/cloudinary";
 
 const RegisterBuddy = () => {
   const navigate = useNavigate();
@@ -11,6 +11,13 @@ const RegisterBuddy = () => {
   
   // Quản lý file
   const [files, setFiles] = useState({
+    avatar: null,
+    guideCardFront: null,
+    guideCardBack: null,
+  });
+
+  // Quản lý preview
+  const [previews, setPreviews] = useState({
     avatar: null,
     guideCardFront: null,
     guideCardBack: null,
@@ -40,11 +47,18 @@ const RegisterBuddy = () => {
     setFormData({ ...formData, languages: updated });
   };
 
-  const uploadFile = async (file, path) => {
+  const handleFileChange = (field, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFiles(prev => ({ ...prev, [field]: file }));
+      setPreviews(prev => ({ ...prev, [field]: URL.createObjectURL(file) }));
+    }
+  };
+
+  const uploadFile = async (file) => {
     if (!file) return "";
-    const fileRef = ref(storage, `${path}/${auth.currentUser.uid}_${Date.now()}_${file.name}`);
-    await uploadBytes(fileRef, file);
-    return await getDownloadURL(fileRef);
+    const result = await uploadToCloudinary(file);
+    return result.secure_url;
   };
 
   const handleSubmit = async (e) => {
@@ -55,9 +69,9 @@ const RegisterBuddy = () => {
     setLoading(true);
     try {
       // 1. Upload các tệp đính kèm
-      const avatarUrl = await uploadFile(files.avatar, 'buddy_avatars');
-      const cardFrontUrl = await uploadFile(files.guideCardFront, 'buddy_verifications/front');
-      const cardBackUrl = await uploadFile(files.guideCardBack, 'buddy_verifications/back');
+      const avatarUrl = await uploadFile(files.avatar);
+      const cardFrontUrl = await uploadFile(files.guideCardFront);
+      const cardBackUrl = await uploadFile(files.guideCardBack);
 
       // 2. Lưu vào Firestore
       await addDoc(collection(db, "partner_requests"), {
@@ -179,24 +193,36 @@ const RegisterBuddy = () => {
               <div className="space-y-2">
                 <p className="text-[11px] font-bold text-center text-slate-400 uppercase">Ảnh thẻ 3x4</p>
                 <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed rounded-2xl cursor-pointer hover:bg-orange-50 transition-colors">
-                  {files.avatar ? <span className="text-[10px] p-2 text-center">{files.avatar.name}</span> : <Upload className="text-slate-300"/>}
-                  <input type="file" className="hidden" onChange={e => setFiles({...files, avatar: e.target.files[0]})} />
+                  {previews.avatar ? (
+                    <img src={previews.avatar} alt="Avatar preview" className="w-full h-full object-cover rounded-2xl" />
+                  ) : (
+                    <Upload className="text-slate-300" />
+                  )}
+                  <input type="file" className="hidden" onChange={(e) => handleFileChange('avatar', e)} />
                 </label>
               </div>
               {/* Thẻ trước */}
               <div className="space-y-2">
                 <p className="text-[11px] font-bold text-center text-slate-400 uppercase">Mặt trước thẻ HDV</p>
                 <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed rounded-2xl cursor-pointer hover:bg-orange-50">
-                  {files.guideCardFront ? <span className="text-[10px] p-2 text-center">{files.guideCardFront.name}</span> : <Upload className="text-slate-300"/>}
-                  <input type="file" className="hidden" onChange={e => setFiles({...files, guideCardFront: e.target.files[0]})} />
+                  {previews.guideCardFront ? (
+                    <img src={previews.guideCardFront} alt="Guide card front preview" className="w-full h-full object-cover rounded-2xl" />
+                  ) : (
+                    <Upload className="text-slate-300" />
+                  )}
+                  <input type="file" className="hidden" onChange={(e) => handleFileChange('guideCardFront', e)} />
                 </label>
               </div>
               {/* Thẻ sau */}
               <div className="space-y-2">
                 <p className="text-[11px] font-bold text-center text-slate-400 uppercase">Mặt sau thẻ HDV</p>
                 <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed rounded-2xl cursor-pointer hover:bg-orange-50">
-                  {files.guideCardBack ? <span className="text-[10px] p-2 text-center">{files.guideCardBack.name}</span> : <Upload className="text-slate-300"/>}
-                  <input type="file" className="hidden" onChange={e => setFiles({...files, guideCardBack: e.target.files[0]})} />
+                  {previews.guideCardBack ? (
+                    <img src={previews.guideCardBack} alt="Guide card back preview" className="w-full h-full object-cover rounded-2xl" />
+                  ) : (
+                    <Upload className="text-slate-300" />
+                  )}
+                  <input type="file" className="hidden" onChange={(e) => handleFileChange('guideCardBack', e)} />
                 </label>
               </div>
             </div>
