@@ -39,6 +39,21 @@ const Navbar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Thêm useEffect này vào bên trong component Navbar, phía trên các hàm xử lý khác
+  useEffect(() => {
+    if (!user) return;
+
+    // Kiểm tra nếu đang ở trang đăng ký mà role đã thay đổi (nghĩa là vừa được duyệt)
+    if (user.role === 'manager' && location.pathname === '/register-partner') {
+      alert("🎉 Chúc mừng! Hồ sơ đối tác của bạn đã được duyệt.");
+      navigate('/manager/dashboard');
+    }
+    else if (user.role === 'buddy' && location.pathname === '/register-buddy') {
+      alert("🎉 Chúc mừng! Bạn đã chính thức trở thành Local Buddy.");
+      navigate('/buddy-dashboard');
+    }
+  }, [user?.role]); // Lắng nghe sự thay đổi của role
+
   const navItems = [
     { name: 'Trang Chủ', path: '/' },
     { name: 'Khám Phá', path: '/discovery' },
@@ -111,8 +126,8 @@ const Navbar = () => {
                 key={item.path}
                 to={item.path}
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(item.path)
-                    ? 'text-orange-600 bg-orange-50'
-                    : 'text-gray-600 hover:text-orange-500'
+                  ? 'text-orange-600 bg-orange-50'
+                  : 'text-gray-600 hover:text-orange-500'
                   }`}
               >
                 {item.name}
@@ -148,7 +163,11 @@ const Navbar = () => {
                   className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition-all"
                 >
                   <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 border border-orange-200 shadow-sm overflow-hidden">
-                    <User size={20} />
+                    {user.avatar ? (
+                      <img src={user.avatar} alt="Avatar" className="h-full w-full object-cover rounded-full" />
+                    ) : (
+                      <User size={20} />
+                    )}
                   </div>
                   <span className="hidden sm:block text-sm font-medium text-gray-700">{user.name}</span>
                   <ChevronDown size={14} className={`text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
@@ -156,42 +175,48 @@ const Navbar = () => {
 
                 {/* Dropdown Menu (Đã làm đẹp) */}
                 {/* Dropdown Menu */}
+                {/* Thay thế phần Dropdown Menu trong Navbar.jsx */}
                 {showUserMenu && (
                   <div className="absolute right-0 mt-3 w-60 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden py-1">
                     <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-100">
                       <p className="text-sm font-bold text-gray-800">{user.name}</p>
-                      <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">{user.role}</p>
+                      {/* Hiển thị Badge Role rực rỡ hơn khi vừa lên đời */}
+                      <p className={`text-[10px] font-bold uppercase tracking-wider ${user.role === 'admin' ? 'text-red-500' :
+                          user.role === 'manager' ? 'text-purple-600' :
+                            user.role === 'buddy' ? 'text-blue-600' : 'text-orange-500'
+                        }`}>
+                        {user.role === 'manager' ? '🌟 Đối tác quản lý' :
+                          user.role === 'buddy' ? '💎 Local Buddy' : user.role}
+                      </p>
                     </div>
 
-                    {/* Trang cá nhân - Ai cũng có */}
                     <MenuItem to="/profile" icon={UserCircle} onClick={() => setShowUserMenu(false)}>
                       Trang cá nhân
                     </MenuItem>
 
-                    {/* 1. HIỂN THỊ CHO ADMIN */}
+                    {/* Phân quyền Menu linh hoạt */}
                     {user.role === 'admin' && (
                       <MenuItem to="/admin" icon={LayoutDashboard} onClick={() => setShowUserMenu(false)}>
                         Admin Panel
                       </MenuItem>
                     )}
 
-                    {/* 2. HIỂN THỊ CHO MANAGER (ĐỐI TÁC) */}
                     {user.role === 'manager' && (
-                      <MenuItem to="/partner/dashboard" icon={LayoutDashboard} onClick={() => setShowUserMenu(false)}>
-                        Quản lý Khu du lịch
+                      <MenuItem to="/manager/dashboard" icon={LayoutDashboard} onClick={() => setShowUserMenu(false)}>
+                        <span className="text-purple-700 font-bold">Quản lý Khu du lịch</span>
                       </MenuItem>
                     )}
 
-                    {/* 3. HIỂN THỊ CHO BUDDY */}
                     {user.role === 'buddy' && (
                       <MenuItem to="/buddy-dashboard" icon={LayoutDashboard} onClick={() => setShowUserMenu(false)}>
-                        Buddy Dashboard
+                        <span className="text-blue-700 font-bold">Buddy Dashboard</span>
                       </MenuItem>
                     )}
 
-                    {/* 4. HIỂN THỊ CHO USER THƯỜNG (Có quyền đăng ký lên Buddy hoặc Manager) */}
+                    {/* Ẩn đăng ký nếu không phải user thường */}
                     {user.role === 'user' && (
                       <>
+                        <div className="border-t border-gray-50 my-1"></div>
                         <MenuItem to="/register-buddy" icon={UserCheck} onClick={() => setShowUserMenu(false)}>
                           Đăng ký làm Buddy
                         </MenuItem>
@@ -263,8 +288,8 @@ const Navbar = () => {
                   to={item.path}
                   onClick={() => setIsOpen(false)}
                   className={`flex items-center px-4 py-3 rounded-xl font-medium transition-all ${isActive(item.path)
-                      ? 'bg-orange-50 text-orange-600 shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-50'
+                    ? 'bg-orange-50 text-orange-600 shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-50'
                     }`}
                 >
                   {item.name}

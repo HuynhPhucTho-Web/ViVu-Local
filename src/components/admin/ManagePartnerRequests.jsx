@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { collection, getDocs, doc, updateDoc, query, where, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase'; 
-import { 
-  Check, X, Phone, Mail, Shield, User, Briefcase, FileText, 
-  MapPin, CreditCard, Languages, Eye, Clock, Building2, 
+import { db } from '../firebase';
+import {
+  Check, X, Phone, Mail, Shield, User, Briefcase, FileText,
+  MapPin, CreditCard, Languages, Eye, Clock, Building2,
   ExternalLink, FileCheck, Search, Filter, AlertCircle
 } from 'lucide-react';
-import PartnerRequestModal from './PartnerRequestModal'; 
+import PartnerRequestModal from './PartnerRequestModal';
 
 const ManagePartnerRequests = () => {
   const [requests, setRequests] = useState([]);
@@ -20,7 +20,7 @@ const ManagePartnerRequests = () => {
     setLoading(true);
     try {
       const q = query(
-        collection(db, "partner_requests"), 
+        collection(db, "partner_requests"),
         where("status", "==", "pending")
       );
       const snap = await getDocs(q);
@@ -43,34 +43,36 @@ const ManagePartnerRequests = () => {
     if (!window.confirm(`Xác nhận ${actionName} yêu cầu này?`)) return;
 
     try {
-      // Cập nhật trạng thái đơn
-      await updateDoc(doc(db, "partner_requests", requestId), { 
+      // Cập nhật trạng thái đơn trong partner_requests
+      await updateDoc(doc(db, "partner_requests", requestId), {
         status: status,
         updatedAt: serverTimestamp()
       });
-      
+
       // Nếu duyệt, nâng cấp Role người dùng
       if (status === 'approved') {
-        const newRole = type === 'manager' ? 'owner' : 'buddy';
-        await updateDoc(doc(db, "users", userId), { 
+        // SỬA TẠI ĐÂY: Chuyển role đúng theo type yêu cầu
+        const newRole = type === 'manager' ? 'manager' : 'buddy';
+
+        await updateDoc(doc(db, "users", userId), {
           role: newRole,
           isVerified: true,
           verifiedAt: serverTimestamp()
         });
       }
-      
-      // Cập nhật UI
+
+      // Cập nhật UI và đóng Modal
       setRequests(prev => prev.filter(r => r.id !== requestId));
       setIsModalOpen(false);
-      alert(`Đã ${actionName} thành công!`);
-    } catch (e) { 
+      alert(`Đã ${actionName} thành công! Tài khoản đã được nâng cấp thành ${type}.`);
+    } catch (e) {
       console.error(e);
-      alert("Lỗi hệ thống: Không thể cập nhật trạng thái."); 
+      alert("Lỗi hệ thống: Không thể cập nhật trạng thái.");
     }
   };
 
   // 3. Lọc dữ liệu theo tab
-  const filteredRequests = requests.filter(r => 
+  const filteredRequests = requests.filter(r =>
     filterType === 'all' ? true : r.type === filterType
   );
 
@@ -85,7 +87,7 @@ const ManagePartnerRequests = () => {
 
   return (
     <div className="p-4 md:p-8 bg-white rounded-[32px] shadow-sm border border-slate-100 min-h-screen">
-      
+
       {/* Header & Bộ lọc */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
         <div className="flex items-center gap-4">
@@ -103,11 +105,10 @@ const ManagePartnerRequests = () => {
             <button
               key={type}
               onClick={() => setFilterType(type)}
-              className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                filterType === type 
-                ? 'bg-white text-slate-900 shadow-sm' 
+              className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filterType === type
+                ? 'bg-white text-slate-900 shadow-sm'
                 : 'text-slate-400 hover:text-slate-600'
-              }`}
+                }`}
             >
               {type === 'all' ? 'Tất cả' : type}
             </button>
@@ -119,20 +120,23 @@ const ManagePartnerRequests = () => {
       {filteredRequests.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredRequests.map((r) => (
-            <div 
-              key={r.id} 
+            <div
+              key={r.id}
               className="group bg-white border border-slate-100 rounded-[32px] p-6 hover:shadow-2xl hover:shadow-slate-100 hover:border-orange-200 transition-all duration-300 flex flex-col"
             >
               {/* Badge & Icon */}
               <div className="flex justify-between items-start mb-6">
                 <div className={`p-3 rounded-2xl ${r.type === 'manager' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
-                  {r.type === 'manager' ? <Briefcase size={22}/> : <User size={22}/>}
+                  {r.type === 'manager' ? <Briefcase size={22} /> : <User size={22} />}
                 </div>
                 <div className="text-right">
-                    <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${r.type === 'manager' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
-                        {r.type}
-                    </span>
-                    <p className="text-[10px] text-slate-300 mt-1 font-bold">{new Date(r.createdAt?.seconds * 1000).toLocaleDateString('vi-VN')}</p>
+                  <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${r.type === 'manager' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
+                    }`}>
+                    {r.type === 'manager' ? '🌟 ĐỐI TÁC' : '💎 BUDDY'}
+                  </span>
+                  <p className="text-[10px] text-slate-300 mt-1 font-bold">
+                    {new Date(r.createdAt?.seconds * 1000).toLocaleDateString('vi-VN')}
+                  </p>
                 </div>
               </div>
 
@@ -145,17 +149,17 @@ const ManagePartnerRequests = () => {
                 </div>
 
                 <div className="space-y-2 py-4 border-t border-slate-50">
-                   <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
-                      <Phone size={14} className="text-slate-300"/> {r.phone}
-                   </div>
-                   <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
-                      <Mail size={14} className="text-slate-300"/> <span className="truncate">{r.email}</span>
-                   </div>
+                  <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
+                    <Phone size={14} className="text-slate-300" /> {r.phone}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
+                    <Mail size={14} className="text-slate-300" /> <span className="truncate">{r.email}</span>
+                  </div>
                 </div>
               </div>
 
               {/* Nút xem chi tiết */}
-              <button 
+              <button
                 onClick={() => { setSelectedRequest(r); setIsModalOpen(true); }}
                 className="mt-6 w-full py-4 bg-slate-50 group-hover:bg-slate-900 group-hover:text-white text-slate-600 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
               >
@@ -166,13 +170,13 @@ const ManagePartnerRequests = () => {
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-24 bg-slate-50 rounded-[40px] border-2 border-dashed border-slate-200">
-           <AlertCircle size={48} className="text-slate-300 mb-4" />
-           <p className="text-slate-400 font-bold tracking-tight text-lg">Không có yêu cầu nào trong danh mục này</p>
+          <AlertCircle size={48} className="text-slate-300 mb-4" />
+          <p className="text-slate-400 font-bold tracking-tight text-lg">Không có yêu cầu nào trong danh mục này</p>
         </div>
       )}
 
       {/* Modal chi tiết (Gọi component đã tách riêng) */}
-      <PartnerRequestModal 
+      <PartnerRequestModal
         isOpen={isModalOpen}
         item={selectedRequest}
         onClose={() => setIsModalOpen(false)}

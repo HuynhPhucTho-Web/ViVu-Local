@@ -1,22 +1,43 @@
 import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { User, Mail, Phone, MapPin, Calendar, Settings, Edit } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Calendar, Settings, Edit, Upload, Loader2 } from 'lucide-react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../components/firebase';
+import { uploadToCloudinary } from '../data/cloudinary';
+import ImageModal from '../components/ImageModal';
 
 const Profile = () => {
-  const { user } = useAuthStore();
+  const { user, login } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState('');
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
     city: user?.city || '',
     gender: user?.gender || '',
+    avatar: user?.avatar || '',
+    verificationDocuments: user?.verificationDocuments || [],
   });
 
-  const handleSave = () => {
-    // TODO: Implement save functionality with backend
-    console.log('Saving profile:', formData);
-    setIsEditing(false);
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const userRef = doc(db, 'users', user.id);
+      await updateDoc(userRef, formData);
+
+      // Update global state
+      login({ ...user, ...formData });
+      alert('Cập nhật hồ sơ thành công!');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Lỗi khi cập nhật hồ sơ');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -26,8 +47,27 @@ const Profile = () => {
       phone: user?.phone || '',
       city: user?.city || '',
       gender: user?.gender || '',
+      avatar: user?.avatar || '',
     });
     setIsEditing(false);
+  };
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setLoading(true);
+    try {
+      const result = await uploadToCloudinary(file);
+      const avatarUrl = result.secure_url;
+
+      setFormData(prev => ({ ...prev, avatar: avatarUrl }));
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      alert('Lỗi khi tải lên avatar');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!user) {
@@ -48,8 +88,25 @@ const Profile = () => {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="h-20 w-20 rounded-full bg-orange-100 flex items-center justify-center">
-                <User className="h-10 w-10 text-orange-600" />
+              <div className="relative">
+                <div className="h-20 w-20 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden">
+                  {user.avatar ? (
+                    <img src={user.avatar} alt="Avatar" className="h-full w-full object-cover" />
+                  ) : (
+                    <User className="h-10 w-10 text-orange-600" />
+                  )}
+                </div>
+                {isEditing && (
+                  <label className="absolute bottom-0 right-0 bg-orange-500 text-white p-1 rounded-full cursor-pointer hover:bg-orange-600">
+                    <Upload className="h-3 w-3" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      className="hidden"
+                    />
+                  </label>
+                )}
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-800">{user.name}</h1>
@@ -166,13 +223,16 @@ const Profile = () => {
               <div className="flex gap-2 mt-6">
                 <button
                   onClick={handleSave}
-                  className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600"
+                  disabled={loading}
+                  className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 disabled:opacity-50 flex items-center gap-2"
                 >
-                  Lưu thay đổi
+                  {loading ? <Loader2 className="animate-spin h-4 w-4" /> : null}
+                  {loading ? 'Đang lưu...' : 'Lưu thay đổi'}
                 </button>
                 <button
                   onClick={handleCancel}
-                  className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+                  disabled={loading}
+                  className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 disabled:opacity-50"
                 >
                   Hủy
                 </button>
@@ -219,6 +279,13 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      {/* Image Modal */}
+      <ImageModal
+        isOpen={imageModalOpen}
+        onClose={() => setImageModalOpen(false)}
+        imageUrl={selectedImage}
+      />
     </div>
   );
 };

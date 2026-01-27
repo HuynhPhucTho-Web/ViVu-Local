@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db, storage } from '../components/firebase';
+import { db } from '../components/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuthStore } from '../store/authStore';
-import { 
-  Building2, Phone, Mail, FileText, Send, CheckCircle2, ArrowLeft, 
-  MapPin, Clock, Image as ImageIcon, ShieldCheck, Tag, Globe 
+import { uploadToCloudinary } from '../data/cloudinary';
+import {
+  Building2, Phone, Mail, FileText, Send, CheckCircle2, ArrowLeft,
+  MapPin, Clock, Image as ImageIcon, ShieldCheck, Tag, Globe, X
 } from 'lucide-react';
 
 const RegisterPartner = () => {
@@ -17,6 +17,13 @@ const RegisterPartner = () => {
 
   // Quản lý Files
   const [files, setFiles] = useState({
+    thumbnail: null,
+    license: null,
+    gallery: []
+  });
+
+  // Previews
+  const [previews, setPreviews] = useState({
     thumbnail: null,
     license: null,
     gallery: []
@@ -48,27 +55,65 @@ const RegisterPartner = () => {
     setFormData({ ...formData, amenities: updated });
   };
 
-  const uploadToStorage = async (file, folder) => {
-    if (!file) return "";
-    const storageRef = ref(storage, `destinations/${folder}/${Date.now()}_${file.name}`);
-    const snapshot = await uploadBytes(storageRef, file);
-    return await getDownloadURL(snapshot.ref);
+  const handleThumbnailChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFiles({ ...files, thumbnail: file });
+      setPreviews({ ...previews, thumbnail: URL.createObjectURL(file) });
+    }
   };
+
+  const handleLicenseChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFiles({ ...files, license: file });
+      setPreviews({ ...previews, license: URL.createObjectURL(file) });
+    }
+  };
+
+  const handleGalleryChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    setFiles({ ...files, gallery: selectedFiles });
+    setPreviews({ ...previews, gallery: selectedFiles.map(file => URL.createObjectURL(file)) });
+  };
+
+  const removeThumbnail = () => {
+    setFiles({ ...files, thumbnail: null });
+    setPreviews({ ...previews, thumbnail: null });
+  };
+
+  const removeLicense = () => {
+    setFiles({ ...files, license: null });
+    setPreviews({ ...previews, license: null });
+  };
+
+  const removeGalleryImage = (index) => {
+    const newGallery = files.gallery.filter((_, i) => i !== index);
+    const newGalleryPreviews = previews.gallery.filter((_, i) => i !== index);
+    setFiles({ ...files, gallery: newGallery });
+    setPreviews({ ...previews, gallery: newGalleryPreviews });
+  };
+
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!files.thumbnail || !files.license) return alert("Vui lòng tải lên Ảnh đại diện và Giấy phép kinh doanh!");
-    
+
     setLoading(true);
     try {
       // 1. Upload Thumbnail & License
-      const thumbnailUrl = await uploadToStorage(files.thumbnail, 'thumbnails');
-      const licenseUrl = await uploadToStorage(files.license, 'licenses');
+      const thumbnailResult = await uploadToCloudinary(files.thumbnail);
+      const licenseResult = await uploadToCloudinary(files.license);
 
       // 2. Upload Gallery (nhiều ảnh)
-      const galleryUrls = await Promise.all(
-        Array.from(files.gallery).map(file => uploadToStorage(file, 'gallery'))
+      const galleryResults = await Promise.all(
+        files.gallery.map(file => uploadToCloudinary(file))
       );
+
+      const thumbnailUrl = thumbnailResult.secure_url;
+      const licenseUrl = licenseResult.secure_url;
+      const galleryUrls = galleryResults.map(result => result.secure_url);
 
       // 3. Lưu vào Firestore
       await addDoc(collection(db, "partner_requests"), {
@@ -210,36 +255,87 @@ const RegisterPartner = () => {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
-                <div className="p-6 border-2 border-dashed border-gray-100 rounded-[24px] text-center">
-                  <input type="file" id="thumb" className="hidden" onChange={e => setFiles({...files, thumbnail: e.target.files[0]})} />
-                  <label htmlFor="thumb" className="cursor-pointer">
-                    <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <ImageIcon size={24}/>
+                <div className="p-6 border-2 border-dashed border-gray-100 rounded-[24px] text-center relative">
+                  {previews.thumbnail ? (
+                    <div className="relative">
+                      <img src={previews.thumbnail} alt="Thumbnail preview" className="w-full h-32 object-cover rounded-lg" />
+                      <button
+                        type="button"
+                        onClick={removeThumbnail}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      >
+                        <X size={16} />
+                      </button>
                     </div>
-                    <p className="text-sm font-bold text-gray-700">Ảnh đại diện (Thumbnail)</p>
-                    <p className="text-xs text-gray-400 mt-1">{files.thumbnail?.name || "Chọn ảnh đẹp nhất"}</p>
-                  </label>
+                  ) : (
+                    <>
+                      <input type="file" id="thumb" className="hidden" onChange={handleThumbnailChange} />
+                      <label htmlFor="thumb" className="cursor-pointer">
+                        <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                          <ImageIcon size={24}/>
+                        </div>
+                        <p className="text-sm font-bold text-gray-700">Ảnh đại diện (Thumbnail)</p>
+                        <p className="text-xs text-gray-400 mt-1">Chọn ảnh đẹp nhất</p>
+                      </label>
+                    </>
+                  )}
                 </div>
-                <div className="p-6 border-2 border-dashed border-gray-100 rounded-[24px] text-center">
-                  <input type="file" multiple id="gal" className="hidden" onChange={e => setFiles({...files, gallery: e.target.files})} />
-                  <label htmlFor="gal" className="cursor-pointer">
-                    <p className="text-sm font-bold text-gray-700">Bộ sưu tập ảnh (Gallery)</p>
-                    <p className="text-xs text-gray-400 mt-1">{files.gallery?.length || 0} ảnh đã chọn</p>
-                  </label>
+                <div className="space-y-4">
+                  {previews.gallery.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {previews.gallery.map((preview, index) => (
+                        <div key={index} className="relative">
+                          <img src={preview} alt={`Gallery ${index + 1}`} className="w-full h-20 object-cover rounded-lg" />
+                          <button
+                            type="button"
+                            onClick={() => removeGalleryImage(index)}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="p-6 border-2 border-dashed border-gray-100 rounded-[24px] text-center">
+                    <input type="file" multiple id="gal" className="hidden" onChange={handleGalleryChange} />
+                    <label htmlFor="gal" className="cursor-pointer">
+                      <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <ImageIcon size={24}/>
+                      </div>
+                      <p className="text-sm font-bold text-gray-700">Bộ sưu tập ảnh (Gallery)</p>
+                      <p className="text-xs text-gray-400 mt-1">Chọn nhiều ảnh</p>
+                    </label>
+                  </div>
                 </div>
               </div>
               <div className="space-y-4">
-                <div className="p-6 bg-slate-900 rounded-[24px] text-white">
-                  <input type="file" id="license" className="hidden" onChange={e => setFiles({...files, license: e.target.files[0]})} />
-                  <label htmlFor="license" className="cursor-pointer flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
-                      <ShieldCheck size={24}/>
+                <div className="p-6 bg-slate-900 rounded-[24px] text-white relative">
+                  {previews.license ? (
+                    <div className="relative">
+                      <img src={previews.license} alt="License preview" className="w-full h-32 object-cover rounded-lg" />
+                      <button
+                        type="button"
+                        onClick={removeLicense}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      >
+                        <X size={16} />
+                      </button>
                     </div>
-                    <div className="text-left">
-                      <p className="text-sm font-bold">Giấy phép kinh doanh</p>
-                      <p className="text-[10px] opacity-60 uppercase">{files.license?.name || "Bắt buộc để xác thực"}</p>
-                    </div>
-                  </label>
+                  ) : (
+                    <>
+                      <input type="file" id="license" className="hidden" onChange={handleLicenseChange} />
+                      <label htmlFor="license" className="cursor-pointer flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+                          <ShieldCheck size={24}/>
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-bold">Giấy phép kinh doanh</p>
+                          <p className="text-[10px] opacity-60 uppercase">Bắt buộc để xác thực</p>
+                        </div>
+                      </label>
+                    </>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-500 uppercase ml-1 flex items-center gap-1"><Globe size={14}/> Website / Fanpage</label>

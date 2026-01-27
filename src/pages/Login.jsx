@@ -51,7 +51,7 @@ const Login = () => {
           break;
         case 'manager':
           // Đối tác khu du lịch về Dashboard của họ
-          navigate('/partner/dashboard');
+          navigate('/manager/dashboard');
           break;
         case 'buddy':
           // Hướng dẫn viên về Dashboard quản lý tour

@@ -10,9 +10,9 @@ const AdminDashboard = () => {
 
   const menuItems = [
     { id: 'overview', label: 'Tổng quan', icon: BarChart3 },
-    { id: 'users', label: 'Người dùng & Buddy', icon: Users },
+    { id: 'users', label: 'Người dùng, Buddy & partners', icon: Users },
     { id: 'partners', label: 'Yêu cầu Đối tác', icon: Briefcase },
-    { id: 'destinations', label: 'Duyệt Khu du lịch', icon: MapPin },
+    { id: 'destinations', label: 'Khu du lịch', icon: MapPin },
   ];
 
   return (

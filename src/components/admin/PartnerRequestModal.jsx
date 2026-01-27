@@ -1,14 +1,23 @@
-import React from 'react';
-import { 
-  X, Phone, Mail, MapPin, Calendar, CreditCard, 
-  Languages, Clock, Info, ExternalLink, Award, Building2, 
+import React, { useState } from 'react';
+import {
+  X, Phone, Mail, MapPin, Calendar, CreditCard,
+  Languages, Clock, Info, ExternalLink, Award, Building2,
   CheckCircle, FileCheck, DollarSign
 } from 'lucide-react';
+import ImageModal from '../ImageModal';
 
 const PartnerRequestModal = ({ isOpen, item, onClose, onAction }) => {
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState('');
+
   if (!isOpen || !item) return null;
 
   const isManager = item.type === 'manager';
+
+  const handleImageClick = (imageUrl) => {
+    setSelectedImage(imageUrl);
+    setImageModalOpen(true);
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -66,19 +75,34 @@ const PartnerRequestModal = ({ isOpen, item, onClose, onAction }) => {
               {/* Chứng chỉ / Pháp lý */}
               <div>
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Tài liệu xác thực</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {item.proofFiles?.guideCardFront && (
-                    <div className="group relative rounded-xl overflow-hidden border">
-                      <img src={item.proofFiles.guideCardFront} className="h-20 w-full object-cover" />
-                      <a href={item.proofFiles.guideCardFront} target="_blank" className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] font-bold">Xem ảnh</a>
-                    </div>
-                  )}
-                  {item.proofFiles?.license && (
-                    <div className="group relative rounded-xl overflow-hidden border">
-                      <img src={item.proofFiles.license} className="h-20 w-full object-cover" />
-                      <a href={item.proofFiles.license} target="_blank" className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] font-bold">Xem GPKD</a>
-                    </div>
-                  )}
+                <div className="space-y-2">
+                  {/* Horizontal scrollable list */}
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {item.proofFiles?.guideCardBack && (
+                      <div
+                        className="flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => handleImageClick(item.proofFiles.guideCardBack)}
+                      >
+                        <img src={item.proofFiles.guideCardBack} className="w-full h-full object-cover" alt="Guide Card Back" />
+                      </div>
+                    )}
+                    {item.proofFiles?.guideCardFront && (
+                      <div
+                        className="flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => handleImageClick(item.proofFiles.guideCardFront)}
+                      >
+                        <img src={item.proofFiles.guideCardFront} className="w-full h-full object-cover" alt="Guide Card Front" />
+                      </div>
+                    )}
+                    {item.proofFiles?.license && (
+                      <div
+                        className="flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => handleImageClick(item.proofFiles.license)}
+                      >
+                        <img src={item.proofFiles.license} className="w-full h-full object-cover" alt="Business License" />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -168,6 +192,13 @@ const PartnerRequestModal = ({ isOpen, item, onClose, onAction }) => {
           </div>
         </div>
       </div>
+
+      {/* Image Modal */}
+      <ImageModal
+        isOpen={imageModalOpen}
+        onClose={() => setImageModalOpen(false)}
+        imageUrl={selectedImage}
+      />
     </div>
   );
 };

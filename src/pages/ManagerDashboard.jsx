@@ -50,7 +50,7 @@ const ManagerDashboard = () => {
             <h1 className="text-2xl font-bold text-gray-800">Bảng điều khiển đối tác</h1>
             <p className="text-sm text-gray-500">Chào mừng {user?.name}, quản lý hiệu quả khu du lịch của bạn.</p>
           </div>
-          <Link to="/partner/create" className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-orange-200 transition-all active:scale-95">
+          <Link to="/manager/create" className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-orange-200 transition-all active:scale-95">
             <Plus size={20} /> Đăng ký khu mới
           </Link>
         </header>
