@@ -1,14 +1,14 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../components/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { uploadToCloudinary } from '../data/cloudinary';
-import { useAuthStore } from '../store/authStore';
 import { MapPin, Image as ImageIcon, Clock, Ticket, Navigation, Loader2, ArrowLeft, X } from 'lucide-react';
 
-const CreateDestination = () => {
-  const { user } = useAuthStore();
+const EditDestination = () => {
+  const location = useLocation();
   const navigate = useNavigate();
+  const { destination } = location.state || {};
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -20,6 +20,21 @@ const CreateDestination = () => {
     image: '',
     additionalImages: []
   });
+
+  useEffect(() => {
+    if (destination) {
+      setFormData({
+        title: destination.title || '',
+        location: destination.location || '',
+        address: destination.address || '',
+        priceRange: destination.priceRange || '',
+        openingHours: destination.openingHours || '',
+        description: destination.description || '',
+        image: destination.image || '',
+        additionalImages: destination.additionalImages || []
+      });
+    }
+  }, [destination]);
 
   const handleUploadImage = async (e) => {
     const file = e.target.files[0];
@@ -52,27 +67,35 @@ const CreateDestination = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.image) return alert("Vui lòng tải lên ảnh khu du lịch!");
-    
+
     setLoading(true);
     try {
-      await addDoc(collection(db, "destinations"), {
+      await updateDoc(doc(db, "destinations", destination.id), {
         ...formData,
-        managerId: user.uid || user.id,
-        managerName: user.displayName || user.name || user.email,
-        status: 'pending', // Trạng thái chờ Admin duyệt
-        createdAt: new Date().toISOString(),
-        rating: 5,
-        reviews: 0
+        updatedAt: new Date().toISOString()
       });
-      alert("Gửi yêu cầu đăng ký thành công! Vui lòng chờ Admin phê duyệt.");
-      navigate('/partner/dashboard');
+      alert("Cập nhật khu du lịch thành công!");
+      navigate('/manager/dashboard');
     } catch (error) {
       console.error(error);
-      alert("Có lỗi xảy ra khi gửi dữ liệu.");
+      alert("Có lỗi xảy ra khi cập nhật dữ liệu.");
     } finally {
       setLoading(false);
     }
   };
+
+  if (!destination) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500">Không tìm thấy dữ liệu điểm đến.</p>
+          <button onClick={() => navigate('/manager/dashboard')} className="mt-4 bg-orange-500 text-white px-4 py-2 rounded-xl">
+            Quay lại
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
@@ -82,13 +105,13 @@ const CreateDestination = () => {
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-xl font-bold text-gray-800">Đăng ký Khu du lịch đối tác</h1>
+          <h1 className="text-xl font-bold text-gray-800">Chỉnh sửa Khu du lịch</h1>
         </div>
       </div>
 
       <div className="max-w-3xl mx-auto px-4 mt-8">
         <form onSubmit={handleSubmit} className="space-y-6">
-          
+
           {/* Upload Ảnh lớn */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <label className="block text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">Hình ảnh đại diện</label>
@@ -157,7 +180,7 @@ const CreateDestination = () => {
                 <label className="text-xs font-bold text-gray-500 uppercase">Tên khu du lịch</label>
                 <div className="relative">
                   <Navigation className="absolute left-3 top-3 text-gray-400" size={18} />
-                  <input required className="w-full pl-10 pr-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 border-gray-200" 
+                  <input required className="w-full pl-10 pr-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 border-gray-200"
                     placeholder="VD: Khu du lịch Mỹ Khánh" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} />
                 </div>
               </div>
@@ -165,7 +188,7 @@ const CreateDestination = () => {
                 <label className="text-xs font-bold text-gray-500 uppercase">Tỉnh/Thành phố</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-3 text-gray-400" size={18} />
-                  <input required className="w-full pl-10 pr-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 border-gray-200" 
+                  <input required className="w-full pl-10 pr-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 border-gray-200"
                     placeholder="VD: Cần Thơ" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} />
                 </div>
               </div>
@@ -173,7 +196,7 @@ const CreateDestination = () => {
 
             <div className="space-y-1">
               <label className="text-xs font-bold text-gray-500 uppercase">Địa chỉ chi tiết</label>
-              <input required className="w-full px-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 border-gray-200" 
+              <input required className="w-full px-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 border-gray-200"
                 placeholder="Số đường, phường/xã..." value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} />
             </div>
 
@@ -212,17 +235,17 @@ const CreateDestination = () => {
 
             <div className="space-y-1">
               <label className="text-xs font-bold text-gray-500 uppercase">Mô tả khu du lịch</label>
-              <textarea required rows={5} className="w-full px-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 border-gray-200 resize-none" 
+              <textarea required rows={5} className="w-full px-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 border-gray-200 resize-none"
                 placeholder="Giới thiệu những điểm đặc sắc, dịch vụ tại đây..." value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} />
             </div>
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
             className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-200 transition-all flex justify-center items-center gap-2"
           >
-            {loading ? <Loader2 className="animate-spin" /> : "Gửi thông tin đăng ký đối tác"}
+            {loading ? <Loader2 className="animate-spin" /> : "Cập nhật thông tin"}
           </button>
         </form>
       </div>
@@ -230,4 +253,4 @@ const CreateDestination = () => {
   );
 };
 
-export default CreateDestination;
+export default EditDestination;

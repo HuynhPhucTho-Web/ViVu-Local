@@ -11,21 +11,24 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // 1. Lấy dữ liệu thật từ Firebase
+  // 1. Lấy dữ liệu thật từ Firebase - random destinations
   useEffect(() => {
     const fetchDestinations = async () => {
       try {
         const q = query(
           collection(db, "destinations"),
-          where("status", "==", "approved"), // Chỉ lấy bài đã duyệt
-          limit(6)
+          where("status", "==", "approved") // Chỉ lấy bài đã duyệt
         );
         const querySnapshot = await getDocs(q);
         const data = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        setDestinations(data);
+
+        // Shuffle array randomly
+        const shuffled = data.sort(() => 0.5 - Math.random());
+        // Take first 12 for sliding effect
+        setDestinations(shuffled.slice(0, 12));
       } catch (error) {
         console.error("Error fetching destinations:", error);
       } finally {
@@ -116,20 +119,20 @@ const Home = () => {
             <Loader2 className="animate-spin text-orange-500" size={40} />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {destinations.map((place) => (
-              <Link 
-                key={place.id} 
-                to={`/destination/${place.id}`} 
-                className="group relative rounded-[32px] overflow-hidden shadow-xl h-[450px] cursor-pointer block hover:-translate-y-2 transition-all duration-500"
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {destinations.slice(0, 8).map((place) => (
+              <Link
+                key={place.id}
+                to={`/destination/${place.id}`}
+                className="group relative rounded-[32px] overflow-hidden shadow-xl h-[350px] cursor-pointer block hover:-translate-y-2 transition-all duration-500"
               >
-                <img 
-                  src={place.image || "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80"} 
-                  alt={place.title} 
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                <img
+                  src={place.image || "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80"}
+                  alt={place.title}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                <div className="absolute bottom-0 left-0 p-8 text-white w-full">
+                <div className="absolute bottom-0 left-0 p-6 text-white w-full">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="bg-orange-500 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
                       {place.category || 'Du lịch'}
@@ -138,7 +141,7 @@ const Home = () => {
                       <Star size={14} fill="currentColor" /> {place.rating || '5.0'}
                     </span>
                   </div>
-                  <h3 className="text-3xl font-black mb-2 leading-tight">{place.title}</h3>
+                  <h3 className="text-2xl font-black mb-2 leading-tight line-clamp-2">{place.title}</h3>
                   <div className="flex items-center gap-1 text-gray-300 text-sm font-medium">
                     <MapPin size={14} /> {place.location}
                   </div>

@@ -1,14 +1,49 @@
 
 import { useParams, Link } from 'react-router-dom';
 import { Star, MapPin, DollarSign, ArrowLeft, Calendar, User } from 'lucide-react';
-import { reviews } from '../data/mockData';
+import { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../components/firebase';
 
 const ReviewDetail = () => {
   const { id } = useParams();
-  const review = reviews.find(r => r.id === Number(id));
+  const [review, setReview] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  if (!review) {
-    return <div className="text-center py-20">Không tìm thấy bài viết</div>;
+  useEffect(() => {
+    const fetchReview = async () => {
+      try {
+        const docRef = doc(db, "discovery_posts", id);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          setReview({ id: docSnap.id, ...docSnap.data() });
+        } else {
+          setError("Không tìm thấy bài viết");
+        }
+      } catch (err) {
+        console.error("Error fetching review:", err);
+        setError("Lỗi khi tải bài viết");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReview();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p className="text-gray-500 font-bold">Đang tải bài viết...</p>
+      </div>
+    );
+  }
+
+  if (error || !review) {
+    return <div className="text-center py-20">{error || "Không tìm thấy bài viết"}</div>;
   }
 
   return (
@@ -26,10 +61,12 @@ const ReviewDetail = () => {
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center mb-2">
               <span className="bg-orange-500 text-xs font-bold px-2 py-1 rounded mr-3 uppercase">{review.category}</span>
-              <div className="flex items-center text-yellow-400">
-                <Star className="h-4 w-4 fill-current mr-1" />
-                <span className="font-bold">{review.rating}</span>
-              </div>
+              {review.rating && (
+                <div className="flex items-center text-yellow-400">
+                  <Star className="h-4 w-4 fill-current mr-1" />
+                  <span className="font-bold">{review.rating}</span>
+                </div>
+              )}
             </div>
             <h1 className="text-3xl md:text-5xl font-bold mb-4">{review.title}</h1>
             <div className="flex items-center text-gray-200 text-sm">
@@ -43,25 +80,27 @@ const ReviewDetail = () => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 -mt-10 relative z-10">
+      <div className="max-w-4xl mx-auto px-4 -mt-5 relative z-10">
         <div className="bg-white rounded-xl shadow-xl p-8">
           <div className="flex flex-col md:flex-row gap-8">
             <div className="md:w-2/3">
               <h2 className="text-2xl font-bold mb-4 text-gray-900">Chi tiết trải nghiệm</h2>
               <div className="prose max-w-none text-gray-600 whitespace-pre-line">
-                {review.fullContent}
+                {review.fullContent || review.content}
               </div>
-              
-              <div className="mt-8 pt-8 border-t">
-                <h3 className="font-bold text-lg mb-4">Tags</h3>
-                <div className="flex gap-2">
-                  {review.tags.map((tag, idx) => (
-                    <span key={idx} className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
-                      {tag}
-                    </span>
-                  ))}
+
+              {review.tags && review.tags.length > 0 && (
+                <div className="mt-8 pt-8 border-t">
+                  <h3 className="font-bold text-lg mb-4">Tags</h3>
+                  <div className="flex gap-2">
+                    {review.tags.map((tag, idx) => (
+                      <span key={idx} className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="md:w-1/3">

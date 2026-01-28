@@ -1,25 +1,54 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../components/firebase';
 import { useAuthStore } from '../store/authStore';
-import { Plus, Clock, CheckCircle, LayoutDashboard, MapPinned, MessageSquare, Wallet, TrendingUp } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Plus, Clock, CheckCircle, LayoutDashboard, MapPinned, MessageSquare, Wallet, TrendingUp, FileText, Edit, Trash2, Eye, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import ManagerStats from '../components/manager/ManagerStats';
 import ManagerReviews from '../components/manager/ManagerReviews';
+import ManagerProfile from '../components/manager/ManagerProfile';
+import ManageDiscovery from '../components/manager/ManageDiscovery';
+
 
 const ManagerDashboard = () => {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [myDestinations, setMyDestinations] = useState([]);
   const [activeTab, setActiveTab] = useState('list'); // list, stats, reviews
+  const [selectedDestination, setSelectedDestination] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     const fetchMyData = async () => {
-      const q = query(collection(db, "destinations"), where("managerId", "==", user.id));
+      const q = query(collection(db, "destinations"), where("managerId", "==", user.uid));
       const querySnapshot = await getDocs(q);
       setMyDestinations(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     };
     fetchMyData();
-  }, [user.id]);
+  }, [user.uid]);
+
+  const handleEdit = (destination) => {
+    // Navigate to edit page with destination data
+    navigate('/manager/edit', { state: { destination } });
+  };
+
+  const handleDelete = async (destinationId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa điểm đến này?')) return;
+
+    try {
+      await deleteDoc(doc(db, "destinations", destinationId));
+      setMyDestinations(prev => prev.filter(dest => dest.id !== destinationId));
+      alert('Đã xóa điểm đến thành công!');
+    } catch (error) {
+      console.error('Lỗi khi xóa:', error);
+      alert('Có lỗi xảy ra khi xóa điểm đến.');
+    }
+  };
+
+  const handleDetails = (destination) => {
+    setSelectedDestination(destination);
+    setShowModal(true);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
@@ -32,9 +61,11 @@ const ManagerDashboard = () => {
         
         <nav className="space-y-1">
           <SidebarItem active={activeTab === 'list'} onClick={() => setActiveTab('list')} icon={<MapPinned size={20}/>} label="Điểm đến của tôi" />
+          <SidebarItem active={activeTab === 'discovery'} onClick={() => setActiveTab('discovery')} icon={<FileText size={20}/>} label="Quản lý nội dung" />
           <SidebarItem active={activeTab === 'stats'} onClick={() => setActiveTab('stats')} icon={<TrendingUp size={20}/>} label="Thống kê hiệu quả" />
           <SidebarItem active={activeTab === 'reviews'} onClick={() => setActiveTab('reviews')} icon={<MessageSquare size={20}/>} label="Phản hồi khách hàng" />
           <SidebarItem active={activeTab === 'wallet'} onClick={() => setActiveTab('wallet')} icon={<Wallet size={20}/>} label="Doanh thu/Hợp đồng" />
+          <SidebarItem active={activeTab === "profileManager"} onClick={() => setActiveTab('profileManager')} icon={<LayoutDashboard size={20}/>} label="Hồ sơ đối tác" />
         </nav>
 
         <div className="mt-auto p-4 bg-orange-50 rounded-2xl">
@@ -60,7 +91,13 @@ const ManagerDashboard = () => {
           <div className="grid gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {myDestinations.length > 0 ? (
               myDestinations.map(dest => (
-                <DestinationCard key={dest.id} dest={dest} />
+                <DestinationCard
+                  key={dest.id}
+                  dest={dest}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onDetails={handleDetails}
+                />
               ))
             ) : (
               <div className="bg-white border-2 border-dashed border-gray-200 rounded-3xl p-12 text-center">
@@ -70,9 +107,107 @@ const ManagerDashboard = () => {
           </div>
         )}
 
+        {activeTab === 'discovery' && <ManageDiscovery />}
+
         {activeTab === 'stats' && <ManagerStats destinations={myDestinations} />}
         {activeTab === 'reviews' && <ManagerReviews />}
+        {activeTab === 'profileManager' && <ManagerProfile />}
+        {activeTab === 'decovery' && <ManagerDecovery /> }
       </main>
+
+      {/* Modal Chi tiết */}
+      {showModal && selectedDestination && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-[32px] max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 md:p-8">
+              {/* Header Modal */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-black text-slate-800">Chi tiết điểm đến</h2>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Nội dung Modal */}
+              <div className="space-y-6">
+                {/* Hình ảnh chính */}
+                <div className="w-full h-64 bg-gray-200 rounded-2xl overflow-hidden">
+                  <img src={selectedDestination.image || "https://via.placeholder.com/300"} className="w-full h-full object-cover" alt={selectedDestination.title} />
+                </div>
+
+                {/* Thông tin cơ bản */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-bold text-gray-500 uppercase">Tên khu du lịch</label>
+                      <p className="text-lg font-semibold text-slate-800">{selectedDestination.title}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-bold text-gray-500 uppercase">Tỉnh/Thành phố</label>
+                      <p className="text-slate-600">{selectedDestination.location}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-bold text-gray-500 uppercase">Địa chỉ chi tiết</label>
+                      <p className="text-slate-600">{selectedDestination.address}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-bold text-gray-500 uppercase">Giá vé tham khảo</label>
+                      <p className="text-slate-600">{selectedDestination.priceRange}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-bold text-gray-500 uppercase">Giờ mở cửa</label>
+                      <p className="text-slate-600">{selectedDestination.openingHours}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-bold text-gray-500 uppercase">Trạng thái</label>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${selectedDestination.status === 'approved' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}`}>
+                        {selectedDestination.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mô tả */}
+                <div>
+                  <label className="text-sm font-bold text-gray-500 uppercase">Mô tả khu du lịch</label>
+                  <p className="text-slate-600 mt-2 leading-relaxed">{selectedDestination.description}</p>
+                </div>
+
+                {/* Hình ảnh bổ sung */}
+                {selectedDestination.additionalImages && selectedDestination.additionalImages.length > 0 && (
+                  <div>
+                    <label className="text-sm font-bold text-gray-500 uppercase">Hình ảnh bổ sung</label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-4">
+                      {selectedDestination.additionalImages.map((img, index) => (
+                        <div key={index} className="w-full h-24 bg-gray-200 rounded-xl overflow-hidden">
+                          <img src={img} alt={`additional-${index}`} className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Thống kê */}
+                <div className="flex items-center gap-4 pt-4 border-t border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-gray-500 uppercase">Lượt xem:</span>
+                    <span className="font-semibold text-slate-800">{selectedDestination.views || 0}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-gray-500 uppercase">Đánh giá:</span>
+                    <span className="font-semibold text-slate-800">{selectedDestination.rating || 5}/5</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -84,7 +219,7 @@ const SidebarItem = ({ active, onClick, icon, label }) => (
   </button>
 );
 
-const DestinationCard = ({ dest }) => (
+const DestinationCard = ({ dest, onEdit, onDelete, onDetails }) => (
   <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 hover:shadow-md transition-shadow">
     <div className="flex flex-col md:flex-row items-center gap-6 w-full">
       <img src={dest.image} className="w-full md:w-32 h-24 object-cover rounded-2xl shadow-inner" alt={dest.title} />
@@ -108,8 +243,24 @@ const DestinationCard = ({ dest }) => (
       </div>
     </div>
     <div className="flex gap-2 w-full md:w-auto">
-      <button className="flex-1 md:w-32 py-2.5 bg-gray-50 text-gray-600 font-bold rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors">Sửa</button>
-      <button className="flex-1 md:w-32 py-2.5 bg-blue-50 text-blue-600 font-bold rounded-xl border border-blue-100 hover:bg-blue-100 transition-colors">Chi tiết</button>
+      <button
+        onClick={() => onEdit(dest)}
+        className="flex-1 md:w-24 py-2.5 bg-orange-50 text-orange-600 font-bold rounded-xl border border-orange-200 hover:bg-orange-100 transition-colors flex items-center justify-center gap-1"
+      >
+        <Edit size={14} /> Sửa
+      </button>
+      <button
+        onClick={() => onDetails(dest)}
+        className="flex-1 md:w-24 py-2.5 bg-blue-50 text-blue-600 font-bold rounded-xl border border-blue-200 hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
+      >
+        <Eye size={14} /> Chi tiết
+      </button>
+      <button
+        onClick={() => onDelete(dest.id)}
+        className="flex-1 md:w-24 py-2.5 bg-red-50 text-red-600 font-bold rounded-xl border border-red-200 hover:bg-red-100 transition-colors flex items-center justify-center gap-1"
+      >
+        <Trash2 size={14} /> Xóa
+      </button>
     </div>
   </div>
 );

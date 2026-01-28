@@ -27,6 +27,10 @@ import AdminDashboard from './pages/AdminDashboard';
 import BuddyDashboard from './pages/BuddyDashboard';
 import ManagerDashboard from './pages/ManagerDashboard';
 import CreateDestination from './pages/CreateDestination';
+import EditDestination from './pages/EditDestination';
+import ManageDiscovery from './components/manager/ManageDiscovery';
+import AddDiscovery from './pages/AddDiscovery';
+import EditDiscovery from './pages/EditDiscovery';
 
 // Tách phần nội dung ra để có thể sử dụng được các Hook của React Router
 function AppContent() {
@@ -123,6 +127,38 @@ function AppContent() {
             element={
               <ProtectedRoute allowedRoles={['manager']}>
                 <CreateDestination />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manager/edit"
+            element={
+              <ProtectedRoute allowedRoles={['manager']}>
+                <EditDestination />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manager/manage-discovery"
+            element={
+              <ProtectedRoute allowedRoles={['manager']}>
+                <ManageDiscovery />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manager/add-discovery"
+            element={
+              <ProtectedRoute allowedRoles={['manager']}>
+                <AddDiscovery />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manager/edit-discovery/:id"
+            element={
+              <ProtectedRoute allowedRoles={['manager']}>
+                <EditDiscovery />
               </ProtectedRoute>
             }
           />

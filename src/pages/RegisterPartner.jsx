@@ -118,7 +118,7 @@ const RegisterPartner = () => {
       // 3. Lưu vào Firestore
       await addDoc(collection(db, "partner_requests"), {
         ...formData,
-        userId: user.id,
+        userId: user.uid,
         type: 'manager', // Định danh yêu cầu làm Manager địa điểm
         proofFiles: {
           thumbnail: thumbnailUrl,

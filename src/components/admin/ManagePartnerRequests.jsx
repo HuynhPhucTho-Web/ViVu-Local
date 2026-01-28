@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, doc, updateDoc, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, query, where, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
   Check, X, Phone, Mail, Shield, User, Briefcase, FileText,
@@ -10,22 +10,34 @@ import PartnerRequestModal from './PartnerRequestModal';
 
 const ManagePartnerRequests = () => {
   const [requests, setRequests] = useState([]);
+  const [approvedRequests, setApprovedRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [filterType, setFilterType] = useState('all');
+  const [filterType, setFilterType] = useState('pending');
 
   // 1. Lấy dữ liệu từ Firestore
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const q = query(
+      // Fetch pending requests
+      const pendingQuery = query(
         collection(db, "partner_requests"),
         where("status", "==", "pending")
       );
-      const snap = await getDocs(q);
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setRequests(data);
+      const pendingSnap = await getDocs(pendingQuery);
+      const pendingData = pendingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setRequests(pendingData);
+
+      // Fetch approved requests
+      const approvedQuery = query(
+        collection(db, "partner_requests"),
+        where("status", "==", "approved"),
+        where("type", "==", "manager")
+      );
+      const approvedSnap = await getDocs(approvedQuery);
+      const approvedData = approvedSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setApprovedRequests(approvedData);
     } catch (e) {
       console.error("Lỗi lấy dữ liệu:", e);
     } finally {
@@ -37,44 +49,60 @@ const ManagePartnerRequests = () => {
     fetchRequests();
   }, []);
 
-  // 2. Xử lý Duyệt hoặc Từ chối
   const handleAction = async (requestId, userId, type, status) => {
-    const actionName = status === 'approved' ? 'DUYỆT' : 'TỪ CHỐI';
-    if (!window.confirm(`Xác nhận ${actionName} yêu cầu này?`)) return;
+    if (!window.confirm(`Xác nhận duyệt yêu cầu này?`)) return;
 
     try {
-      // Cập nhật trạng thái đơn trong partner_requests
-      await updateDoc(doc(db, "partner_requests", requestId), {
+      // 1. Lấy dữ liệu chi tiết từ đơn đăng ký
+      const requestRef = doc(db, "partner_requests", requestId);
+      const requestSnap = await getDoc(requestRef);
+      const reqData = requestSnap.data();
+
+      // 2. Cập nhật trạng thái đơn đăng ký
+      await updateDoc(requestRef, {
         status: status,
         updatedAt: serverTimestamp()
       });
 
-      // Nếu duyệt, nâng cấp Role người dùng
       if (status === 'approved') {
-        // SỬA TẠI ĐÂY: Chuyển role đúng theo type yêu cầu
-        const newRole = type === 'manager' ? 'manager' : 'buddy';
+        const userRef = doc(db, "users", userId);
 
-        await updateDoc(doc(db, "users", userId), {
-          role: newRole,
+        // 3. COPY dữ liệu từ đơn đăng ký vào Document của User
+        // Điều này giúp thông tin "Sống" cùng với tài khoản User
+        await updateDoc(userRef, {
+          role: type, // 'manager' hoặc 'buddy'
           isVerified: true,
-          verifiedAt: serverTimestamp()
+          verifiedAt: serverTimestamp(),
+
+          // Thông tin kinh doanh lấy từ đơn đăng ký (reqData)
+          businessName: reqData.businessName || "",
+          businessType: reqData.businessType || "",
+          address: reqData.address || "",
+          phone: reqData.phone || "", // SĐT hotline cơ sở
+          slogan: reqData.slogan || "",
+          description: reqData.description || "",
+          openTime: reqData.openTime || "",
+          closeTime: reqData.closeTime || "",
+          amenities: reqData.amenities || [],
+          businessPhotos: {
+            thumbnail: reqData.proofFiles?.thumbnail || "",
+            gallery: reqData.proofFiles?.gallery || []
+          }
         });
       }
 
-      // Cập nhật UI và đóng Modal
-      setRequests(prev => prev.filter(r => r.id !== requestId));
-      setIsModalOpen(false);
-      alert(`Đã ${actionName} thành công! Tài khoản đã được nâng cấp thành ${type}.`);
+      // Refresh data after action
+      await fetchRequests();
+
+      alert("Duyệt thành công! Dữ liệu đã được cập nhật vào hồ sơ User.");
     } catch (e) {
       console.error(e);
-      alert("Lỗi hệ thống: Không thể cập nhật trạng thái.");
+      alert("Lỗi: " + e.message);
     }
   };
 
   // 3. Lọc dữ liệu theo tab
-  const filteredRequests = requests.filter(r =>
-    filterType === 'all' ? true : r.type === filterType
-  );
+  const filteredRequests = filterType === 'pending' ? requests : approvedRequests;
 
   if (loading) {
     return (
@@ -96,21 +124,29 @@ const ManagePartnerRequests = () => {
           </div>
           <div>
             <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Xét duyệt đối tác</h1>
-            <p className="text-slate-400 text-sm font-medium">Hiện có <span className="text-orange-500 font-black">{requests.length}</span> hồ sơ đang chờ xử lý</p>
+            <p className="text-slate-400 text-sm font-medium">
+              {filterType === 'pending'
+                ? `Hiện có ${requests.length} hồ sơ đang chờ xử lý`
+                : `Hiện có ${approvedRequests.length} hồ sơ đã duyệt`
+              }
+            </p>
           </div>
         </div>
 
         <div className="flex bg-slate-100 p-1.5 rounded-2xl">
-          {['all', 'buddy', 'manager'].map((type) => (
+          {[
+            { key: 'pending', label: 'Chờ duyệt' },
+            { key: 'approved', label: 'Đã duyệt' }
+          ].map((tab) => (
             <button
-              key={type}
-              onClick={() => setFilterType(type)}
-              className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filterType === type
+              key={tab.key}
+              onClick={() => setFilterType(tab.key)}
+              className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filterType === tab.key
                 ? 'bg-white text-slate-900 shadow-sm'
                 : 'text-slate-400 hover:text-slate-600'
                 }`}
             >
-              {type === 'all' ? 'Tất cả' : type}
+              {tab.label}
             </button>
           ))}
         </div>

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { doc, onSnapshot } from 'firebase/firestore'
-import { db } from '../components/firebase' // Đảm bảo đường dẫn này đúng
+import { db } from '../components/firebase' 
 
 export const useAuthStore = create(
   persist(

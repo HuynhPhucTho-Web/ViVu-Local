@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Search, Star, MapPin } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { reviews } from '../data/mockData';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { db } from '../components/firebase';
 
 const Discovery = () => {
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const query = searchParams.get('search');
@@ -15,9 +18,33 @@ const Discovery = () => {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const q = query(collection(db, "discovery_posts"), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        const reviewsData = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          console.log("Post ID:", doc.id, "Author ID:", data.authorId, "Author:", data.author);
+          return {
+            id: doc.id,
+            ...data
+          };
+        });
+        setReviews(reviewsData);
+      } catch (error) {
+        console.error("Error fetching reviews:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReviews();
+  }, []);
+
   const filteredReviews = reviews.filter(r => {
     const matchesFilter = activeFilter === 'all' || r.category === activeFilter;
-    const matchesSearch = r.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch = r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           r.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           r.content.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesFilter && matchesSearch;
@@ -67,7 +94,12 @@ const Discovery = () => {
         </div>
 
         {/* Review Grid */}
-        {filteredReviews.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+            <p className="text-gray-500 font-bold animate-pulse">Đang tải bài viết...</p>
+          </div>
+        ) : filteredReviews.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-gray-500">Không tìm thấy kết quả nào phù hợp.</p>
           </div>
@@ -77,42 +109,38 @@ const Discovery = () => {
               <Link key={review.id} to={`/review/${review.id}`} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition duration-300 block">
                 <div className="h-48 overflow-hidden relative">
                   <img src={review.image} alt={review.title} className="w-full h-full object-cover" />
-                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center shadow-sm">
-                    <Star className="h-4 w-4 text-yellow-500 fill-current mr-1" />
-                    <span className="text-sm font-bold">{review.rating}</span>
-                  </div>
                 </div>
-                
+
                 <div className="p-6">
                   <div className="flex flex-wrap gap-2 mb-3">
-                    {review.tags.map((tag, idx) => (
+                    {review.tags?.map((tag, idx) => (
                       <span key={idx} className="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                        {tag}
+                        #{tag}
                       </span>
                     ))}
                   </div>
-                  
+
                   <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">{review.title}</h3>
-                  
+
                   <div className="flex items-center text-gray-500 text-sm mb-4">
                     <MapPin className="h-4 w-4 mr-1" />
                     {review.location}
                   </div>
-                  
+
                   <p className="text-gray-600 text-sm mb-4 line-clamp-3">
                     "{review.content}"
                   </p>
-                  
+
                   <div className="flex justify-between items-center pt-4 border-t border-gray-100">
                     <div className="flex items-center">
                       <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 mr-2">
-                        {review.author.charAt(0)}
+                        {review.author?.charAt(0) || '?'}
                       </div>
-                      <span className="text-sm text-gray-600">{review.author}</span>
+                      <span className="text-sm text-gray-600">{review.author || 'Anonymous'}</span>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-gray-400">Tổng chi phí</p>
-                      <p className="text-orange-600 font-bold">{review.cost}</p>
+                      <p className="text-orange-600 font-bold">{review.cost || 'Chưa cập nhật'}</p>
                     </div>
                   </div>
                 </div>
