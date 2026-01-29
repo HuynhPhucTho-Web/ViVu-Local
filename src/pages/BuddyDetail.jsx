@@ -3,14 +3,14 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MapPin, Shield, MessageCircle, Phone, Mail, CheckCircle, ArrowLeft, Clock, Calendar, Loader2 } from 'lucide-react';
 // 1. Import Firebase
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../components/firebase'; 
+import { db } from '../components/firebase';
 import BookingModal from '../components/BookingModal';
 
 const BuddyDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [isBookingOpen, setIsBookingOpen] = useState(false);
-  
+
   // 2. Quản lý state dữ liệu thật
   const [buddy, setBuddy] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -38,7 +38,16 @@ const BuddyDetail = () => {
   }, [id]);
 
   const handleChat = () => {
-    navigate(`/chat/${id}`);
+    navigate(`/chat/${id}`, {
+      state: {
+        buddyName: buddy.name,
+        buddyAvatar: buddy.image
+      }
+    });
+  };
+
+  const handleGoToBooking = () => {
+    navigate(`/booking/${id}`);
   };
 
   // 3. Xử lý trạng thái Loading
@@ -76,17 +85,17 @@ const BuddyDetail = () => {
             {/* Left Column */}
             <div className="md:w-1/3 bg-slate-900 text-white p-8 text-center relative">
               <div className="relative inline-block mb-6">
-                <img 
+                <img
                   // Xử lý ảnh đại diện thật hoặc mặc định
-                  src={buddy.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(buddy.name || 'B')}&background=random`} 
-                  alt={buddy.name} 
+                  src={buddy.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(buddy.name || 'B')}&background=random`}
+                  alt={buddy.name}
                   className="w-40 h-40 rounded-full object-cover border-4 border-orange-500 mx-auto shadow-2xl"
                 />
                 <div className="absolute bottom-2 right-2 bg-green-500 p-1.5 rounded-full border-2 border-slate-900 shadow-lg">
                   <Shield className="h-4 w-4 text-white" />
                 </div>
               </div>
-              
+
               <h1 className="text-2xl font-black mb-2 tracking-tight">
                 {buddy.name || buddy.email?.split('@')[0]}
               </h1>
@@ -95,14 +104,12 @@ const BuddyDetail = () => {
               </div>
 
               {/* Status Badge */}
-              <div className={`inline-flex items-center px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-6 ${
-                buddy.status === 'available' 
-                  ? 'bg-green-500/10 text-green-400 border border-green-500/30' 
+              <div className={`inline-flex items-center px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-6 ${buddy.status === 'available'
+                  ? 'bg-green-500/10 text-green-400 border border-green-500/30'
                   : 'bg-red-500/10 text-red-400 border border-red-500/30'
-              }`}>
-                <div className={`w-2 h-2 rounded-full mr-2 animate-pulse ${
-                  buddy.status === 'available' ? 'bg-green-500' : 'bg-red-500'
-                }`}></div>
+                }`}>
+                <div className={`w-2 h-2 rounded-full mr-2 animate-pulse ${buddy.status === 'available' ? 'bg-green-500' : 'bg-red-500'
+                  }`}></div>
                 {buddy.status === 'available' ? 'Đang sẵn sàng' : 'Đang có tour'}
               </div>
 
@@ -122,14 +129,14 @@ const BuddyDetail = () => {
               </div>
 
               <div className="space-y-3">
-                <button 
+                <button
                   onClick={handleChat}
                   className="w-full bg-orange-500 text-white py-4 rounded-2xl font-black hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center active:scale-95"
                 >
                   <MessageCircle className="h-5 w-5 mr-2" /> CHAT NGAY
                 </button>
-                <button 
-                  onClick={() => setIsBookingOpen(true)}
+                <button
+                  onClick={handleGoToBooking}
                   className="w-full bg-white/5 text-white py-4 rounded-2xl font-black hover:bg-white/10 transition-all border border-white/10 flex items-center justify-center active:scale-95"
                 >
                   <Calendar className="h-5 w-5 mr-2" /> ĐẶT LỊCH
@@ -187,7 +194,7 @@ const BuddyDetail = () => {
                       <p className="font-bold text-gray-900">{buddy.phone || '090x.xxx.xxx'}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center p-5 border border-gray-100 rounded-[20px] hover:border-blue-500 hover:shadow-md transition-all cursor-pointer group">
                     <div className="bg-blue-50 p-3 rounded-full mr-4 group-hover:bg-blue-500 group-hover:text-white transition-all">
                       <Mail className="h-5 w-5 text-blue-600 group-hover:text-white" />
@@ -198,7 +205,7 @@ const BuddyDetail = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="mt-8 bg-amber-50 p-5 rounded-[24px] flex items-start border border-amber-100">
                   <CheckCircle className="h-6 w-6 text-amber-600 mr-4 mt-0.5" />
                   <p className="text-sm text-amber-900 font-medium leading-relaxed">
@@ -211,9 +218,9 @@ const BuddyDetail = () => {
         </div>
       </div>
 
-      <BookingModal 
-        isOpen={isBookingOpen} 
-        onClose={() => setIsBookingOpen(false)} 
+      <BookingModal
+        isOpen={isBookingOpen}
+        onClose={() => setIsBookingOpen(false)}
         buddyName={buddy.name || buddy.email?.split('@')[0]}
         price={buddy.price || "Thỏa thuận"}
       />

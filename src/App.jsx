@@ -32,6 +32,8 @@ import EditDestination from './pages/EditDestination';
 import ManageDiscovery from './components/manager/ManageDiscovery';
 import AddDiscovery from './pages/AddDiscovery';
 import EditDiscovery from './pages/EditDiscovery';
+import BookingPage from './components/BookingPage';
+import ChatPage from './components/ChatPage';
 
 // Tách phần nội dung ra để có thể sử dụng được các Hook của React Router
 function AppContent() {
@@ -93,6 +95,8 @@ function AppContent() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/register-partner" element={<RegisterPartner />} />
           <Route path="/register-buddy" element={<RegisterBuddy />} />
+          <Route path="/booking/:buddyId" element={<BookingPage />} />
+          <Route path="/chat/:buddyId" element={<ChatPage />} />
 
           {/* Admin Routes */}
           <Route

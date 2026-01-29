@@ -149,6 +149,8 @@ firebase --version
 
 firebase login
 
+npm install @google/generative-ai
+
 firebase init
 
 
@@ -222,5 +224,21 @@ Nền tảng thu tiền từ 3 luồng chính:
 ---
 *Last update: Jan 2026*
 
+
+1. Luồng hoạt động của User & BuddyLuồng này đảm bảo tính an toàn cho tiền của khách và công sức của 
+Buddy:
+Bước 1: Tìm kiếm & Lựa chọn: User vào app, xem danh sách Buddy dựa trên khu vực, ngôn ngữ và đánh giá.
+Bước 2: Kết nối & Trao đổi: User chat với Buddy qua cửa sổ chat (sử dụng ViVuBot để hỗ trợ giải đáp nhanh các quy định chung) để thống nhất lịch trình.
+Bước 3: Đặt yêu cầu (Booking Request): User chọn thời gian và nhấn đặt. Hệ thống sẽ giữ chỗ (Pending).
+Bước 4: Xác nhận: Buddy nhận thông báo và nhấn "Chấp nhận" hoặc "Từ chối" yêu cầu.
+Bước 5: Thanh toán (Escrow): User thanh toán 100% tiền qua App. Tuy nhiên, tiền này chưa trả ngay cho Buddy mà hệ thống sẽ giữ lại (để đảm bảo Buddy không "bùng" tour).
+Bước 6: Thực hiện Tour: Buddy đi dẫn khách theo lịch trình.
+Bước 7: Hoàn tất & Đánh giá: Sau khi tour kết thúc, User nhấn "Hoàn thành" trên app. 
+
+Lúc này tiền mới được giải ngân vào ví của Buddy.2. Cơ chế Chiết khấu (Commission) & Thanh toánĐây là cách app của bạn tạo ra doanh thu (Revenue Model):Đối tượngCách thức nhận tiền/chi phíVí dụ (Tour 1.000.000đ)UserTrả tiền tour + Phí dịch vụ app (nếu có)Trả: 1.000.000đApp (ViVu)Thu chiết khấu từ Buddy (thường 10% - 20%)Thu phí: 150.000đ (15%)BuddyNhận tiền sau khi trừ chiết khấuNhận về: 850.000đQuy trình xử lý dòng tiền:Thu tiền: App thu trọn gói $100\%$ từ User.Giữ tiền: App giữ tiền trong suốt thời gian tour diễn ra.Đối soát: Khi tour thành công, hệ thống tự động trừ % chiết khấu đã thỏa thuận với Buddy.Rút tiền (Payout): Buddy có thể yêu cầu rút tiền từ "Ví Buddy" về tài khoản ngân hàng cá nhân vào các ngày cố định trong tuần.
+
+
+
 Project Console: https://console.firebase.google.com/project/vivulocal/overview
 Hosting URL: https://vivulocal.web.app
+
