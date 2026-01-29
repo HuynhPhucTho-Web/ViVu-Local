@@ -38,7 +38,7 @@ const Login = () => {
 
       // 3. Lưu vào State Management (Zustand/AuthStore)
       login({
-        id: user.uid,
+        uid: user.uid,
         email: user.email,
         name: userData?.name || 'Người dùng',
         role: userRole,
@@ -77,24 +77,30 @@ const Login = () => {
     }
   };
 
-  // LOGIN GOOGLE
   const handleGoogleLogin = async () => {
-    setError('')
+    setError('');
     try {
-      const user = await loginWithGoogle()
+      // Gọi hàm login đã sửa ở trên
+      const userData = await loginWithGoogle();
 
+      // Lưu vào Zustand store
       login({
-        id: user.uid,
-        email: user.email,
-        name: user.name,
-        role: 'user',
-      })
+        uid: userData.uid,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+      });
 
-      navigate('/')
+      // Điều hướng dựa trên role (giống hệt logic bên Email Login)
+      if (userData.role === 'admin') navigate('/admin');
+      else if (userData.role === 'manager') navigate('/manager/dashboard');
+      else navigate('/');
+
     } catch (err) {
-      setError('Đăng nhập Google thất bại')
+      console.error(err);
+      setError('Đăng nhập Google thất bại. Vui lòng thử lại.');
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex justify-center items-center">

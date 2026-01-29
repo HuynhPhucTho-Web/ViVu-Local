@@ -178,18 +178,25 @@ const ManagePartnerRequests = () => {
 
               {/* Thông tin chính */}
               <div className="flex-1">
-                <h3 className="text-lg font-black text-slate-800 mb-1 line-clamp-1">{r.businessName || r.name}</h3>
-                <div className="flex items-center gap-2 text-slate-400 text-xs mb-4">
-                  <MapPin size={14} />
-                  <span className="truncate">{r.address || r.location || "Chưa cập nhật địa chỉ"}</span>
+                <h3 className="text-lg font-black text-slate-800 mb-1 line-clamp-1">
+                  {r.businessName}
+                </h3>
+                <div className="flex items-center gap-2 text-orange-500 text-[10px] font-black uppercase mb-4">
+                  <Shield size={12} />
+                  <span>MST: {r.taxCode || "Chưa cập nhật"}</span>
                 </div>
 
                 <div className="space-y-2 py-4 border-t border-slate-50">
                   <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
+                    <User size={14} className="text-slate-300" />
+                    <span className="text-slate-400 font-medium">Đại diện:</span> {r.representativeName}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
                     <Phone size={14} className="text-slate-300" /> {r.phone}
                   </div>
                   <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
-                    <Mail size={14} className="text-slate-300" /> <span className="truncate">{r.email}</span>
+                    <MapPin size={14} className="text-slate-300" />
+                    <span className="truncate">{r.address}</span>
                   </div>
                 </div>
               </div>

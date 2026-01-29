@@ -6,6 +6,7 @@ import { useAuthStore } from './store/authStore';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
+import ChatbotBubble from './components/ChatbotBubble';
 
 // Pages
 import Home from './pages/Home';
@@ -72,7 +73,7 @@ function AppContent() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen font-sans text-gray-900">
+    <div className="flex flex-col min-h-screen font-sans text-gray-900 relative">
       <Navbar />
       <main className="flex-grow">
         <Routes>
@@ -165,6 +166,7 @@ function AppContent() {
         </Routes>
       </main>
       <Footer />
+      <ChatbotBubble />
     </div>
   );
 }

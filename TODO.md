@@ -1,9 +1,2 @@
-# TODO for ManageDestinations.jsx Modification
-
-- [x] Add necessary imports (React hooks, Firebase functions)
-- [x] Add state variables for destinations, loading
-- [x] Implement fetchDestinations function to query approved destinations
-- [x] Implement handleStatusChange function to update destination status
-- [x] Update JSX to display destinations grid with edit buttons
-- [x] Add loading state handling
-- [x] Fix uploader name fetching from users collection
+- [x] Edit src/pages/CreateDestination.jsx: Add showSuccess state and conditionally render RegisterSuccess component after successful submission
+- [x] Edit src/components/RegisterSuccess.jsx: Update second button to navigate to '/manager/dashboard' with text "QUAY VỀ DASHBOARD QUẢN LÝ"
