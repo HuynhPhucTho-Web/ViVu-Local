@@ -1,8 +1,8 @@
 
 import { useParams, Link } from 'react-router-dom';
-import { Star, MapPin, DollarSign, ArrowLeft, Calendar, User } from 'lucide-react';
+import { Star, MapPin, DollarSign, ArrowLeft, Calendar, User, Send, MessageCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, updateDoc, arrayUnion, getDocs } from 'firebase/firestore';
 import { db } from '../components/firebase';
 
 const ReviewDetail = () => {
@@ -10,6 +10,13 @@ const ReviewDetail = () => {
   const [review, setReview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userRating, setUserRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [commentAuthor, setCommentAuthor] = useState('Anonymous User');
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   useEffect(() => {
     const fetchReview = async () => {
@@ -32,6 +39,79 @@ const ReviewDetail = () => {
 
     fetchReview();
   }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const commentsRef = collection(db, "discovery_posts", id, "comments");
+    const q = query(commentsRef, orderBy("createdAt", "desc"));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const commentsData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setComments(commentsData);
+    }, (error) => {
+      console.error("Error fetching comments:", error);
+    });
+
+    return () => unsubscribe();
+  }, [id]);
+
+  const handleRating = async (rating) => {
+    if (submittingRating) return;
+
+    setSubmittingRating(true);
+    try {
+      const reviewRef = doc(db, "discovery_posts", id);
+      const ratingData = {
+        rating,
+        userId: "anonymous", // In a real app, this would be the authenticated user ID
+        createdAt: new Date()
+      };
+
+      await updateDoc(reviewRef, {
+        ratings: arrayUnion(ratingData)
+      });
+
+      setUserRating(rating);
+      // Update local review state to reflect the new rating
+      setReview(prev => ({
+        ...prev,
+        ratings: [...(prev.ratings || []), ratingData]
+      }));
+    } catch (error) {
+      console.error("Error submitting rating:", error);
+      alert("Có lỗi xảy ra khi gửi đánh giá. Vui lòng thử lại.");
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
+
+  const handleCommentSubmit = async (e) => {
+    e.preventDefault();
+    if (submittingComment || !newComment.trim()) return;
+
+    setSubmittingComment(true);
+    try {
+      const commentsRef = collection(db, "discovery_posts", id, "comments");
+      const commentData = {
+        author: commentAuthor.trim() || "Anonymous",
+        content: newComment.trim(),
+        createdAt: new Date()
+      };
+
+      await addDoc(commentsRef, commentData);
+      setNewComment('');
+      setCommentAuthor('Anonymous User');
+    } catch (error) {
+      console.error("Error submitting comment:", error);
+      alert("Có lỗi xảy ra khi gửi bình luận. Vui lòng thử lại.");
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -120,6 +200,125 @@ const ReviewDetail = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Rating Section */}
+        <div className="bg-white rounded-xl shadow-xl p-8 mt-8">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl font-bold text-gray-900">Đánh giá bài viết</h3>
+            <div className="flex items-center text-yellow-500">
+              <Star className="h-5 w-5 fill-current mr-1" />
+              <span className="font-bold text-lg">
+                {review.ratings && review.ratings.length > 0
+                  ? (review.ratings.reduce((sum, r) => sum + r.rating, 0) / review.ratings.length).toFixed(1)
+                  : 'Chưa có đánh giá'
+                }
+              </span>
+              <span className="text-gray-500 ml-2">
+                ({review.ratings ? review.ratings.length : 0} đánh giá)
+              </span>
+            </div>
+          </div>
+
+          <div className="mb-8">
+            <p className="text-gray-600 mb-4">Bạn đánh giá bài viết này như thế nào?</p>
+            <div className="flex items-center space-x-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => handleRating(star)}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  disabled={submittingRating}
+                  className="focus:outline-none disabled:opacity-50"
+                >
+                  <Star
+                    className={`h-8 w-8 ${
+                      star <= (hoverRating || userRating)
+                        ? 'text-yellow-400 fill-current'
+                        : 'text-gray-300'
+                    } transition-colors`}
+                  />
+                </button>
+              ))}
+              <span className="ml-4 text-gray-600">
+                {hoverRating > 0 ? `${hoverRating} sao` : userRating > 0 ? `${userRating} sao` : ''}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Comments Section */}
+        <div className="bg-white rounded-xl shadow-xl p-8 mt-8">
+          <div className="flex items-center mb-6">
+            <MessageCircle className="h-6 w-6 text-gray-600 mr-3" />
+            <h3 className="text-2xl font-bold text-gray-900">Bình luận</h3>
+            <span className="ml-2 text-gray-500">({comments.length})</span>
+          </div>
+
+          {/* Comment Form */}
+          <form onSubmit={handleCommentSubmit} className="mb-8">
+            <div className="flex gap-4">
+              <input
+                type="text"
+                value={commentAuthor}
+                onChange={(e) => setCommentAuthor(e.target.value)}
+                placeholder="Tên của bạn"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                required
+              />
+            </div>
+            <div className="flex gap-4 mt-4">
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Viết bình luận của bạn..."
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                rows="3"
+                required
+              />
+              <button
+                type="submit"
+                disabled={submittingComment || !newComment.trim()}
+                className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                {submittingComment ? 'Đang gửi...' : 'Gửi'}
+              </button>
+            </div>
+          </form>
+
+          {/* Comments List */}
+          <div className="space-y-6">
+            {comments.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <MessageCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>Chưa có bình luận nào. Hãy là người đầu tiên bình luận!</p>
+              </div>
+            ) : (
+              comments.map((comment) => (
+                <div key={comment.id} className="border-b border-gray-100 pb-6 last:border-b-0">
+                  <div className="flex items-start space-x-3">
+                    <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-bold text-gray-600">
+                      {comment.author.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="font-semibold text-gray-900">{comment.author}</span>
+                        <span className="text-sm text-gray-500">
+                          {comment.createdAt?.toDate
+                            ? comment.createdAt.toDate().toLocaleDateString('vi-VN')
+                            : 'Vừa xong'
+                          }
+                        </span>
+                      </div>
+                      <p className="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

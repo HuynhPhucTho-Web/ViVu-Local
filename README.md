@@ -153,6 +153,8 @@ npm install @google/generative-ai
 
 firebase init
 
+firebase deploy --only firestore:rules
+
 
 # 🗺️ Travel Platform Business Plan
 

@@ -10,12 +10,16 @@ const REACTIONS = [
   { label: 'Thích', icon: '👍', color: 'text-blue-500', value: 'like' },
   { label: 'Yêu', icon: '❤️', color: 'text-red-500', value: 'love' },
   { label: 'Haha', icon: '😆', color: 'text-yellow-500', value: 'haha' },
-  { label: 'Wow', icon: '😮', color: 'text-orange-500', value: 'wow' }
+  { label: 'Wow', icon: '😮', color: 'text-orange-500', value: 'wow' },
+  { label: 'Buồn', icon: '😢', color: 'text-blue-600', value: 'sad' },
+  { label: 'Giận', icon: '😡', color: 'text-red-600', value: 'angry' },
+  { label: 'Thú vị', icon: '🤔', color: 'text-purple-500', value: 'thinking' },
+  { label: 'Tuyệt vời', icon: '👏', color: 'text-green-500', value: 'clap' }
 ];
 
 const CommentItem = ({ comment, onReply, onLikeComment, depth = 0, currentUser }) => {
   const [showReactions, setShowReactions] = useState(false);
-  const userReaction = comment.reactions?.find(r => r.userId === currentUser?.id);
+  const userReaction = comment.reactions?.find(r => r.userId === currentUser?.uid);
 
   return (
     <div className={`mt-3 ${depth > 0 ? 'ml-8 border-l-2 border-orange-100 pl-4' : ''}`}>
@@ -61,7 +65,7 @@ const PostCard = ({ post, currentUser }) => {
   const [editTitle, setEditTitle] = useState(post.title || '');
   const [editImages, setEditImages] = useState(post.images || (post.image ? [post.image] : []));
 
-  const userReaction = post.reactions?.find(r => r.userId === currentUser?.id);
+  const userReaction = post.reactions?.find(r => r.userId === currentUser?.uid);
 
   // Auto-close options after 5 seconds
   useEffect(() => {
@@ -72,6 +76,29 @@ const PostCard = ({ post, currentUser }) => {
       return () => clearTimeout(timer);
     }
   }, [showOptions]);
+
+  // Click to show reactions
+  const reactionRef = useRef(null);
+  const handleReactionClick = () => {
+    setShowReactions(!showReactions);
+  };
+
+  // Close reactions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (reactionRef.current && !reactionRef.current.contains(event.target)) {
+        setShowReactions(false);
+      }
+    };
+
+    if (showReactions) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showReactions]);
 
   // Function to count all comments including replies recursively
   const countComments = (comments) => {
@@ -84,9 +111,9 @@ const PostCard = ({ post, currentUser }) => {
   const handleReact = async (type) => {
     if (!currentUser) return alert("Vui lòng đăng nhập!");
     const postRef = doc(db, 'posts', post.id);
-    const otherReactions = (post.reactions || []).filter(r => r.userId !== currentUser.id);
+    const otherReactions = (post.reactions || []).filter(r => r.userId !== currentUser.uid);
     try {
-      await updateDoc(postRef, { reactions: [...otherReactions, { userId: currentUser.id, type }] });
+      await updateDoc(postRef, { reactions: [...otherReactions, { userId: currentUser.uid, type }] });
     } catch (e) {
       alert("Lỗi khi thích bài viết!");
       console.error(e);
@@ -99,8 +126,8 @@ const PostCard = ({ post, currentUser }) => {
     const postRef = doc(db, 'posts', post.id);
     const updateRecursive = (list) => list.map(c => {
       if (c.id === commentId) {
-        const others = (c.reactions || []).filter(r => r.userId !== currentUser.id);
-        return { ...c, reactions: [...others, { userId: currentUser.id, type }] };
+        const others = (c.reactions || []).filter(r => r.userId !== currentUser.uid);
+        return { ...c, reactions: [...others, { userId: currentUser.uid, type }] };
       }
       return { ...c, replies: updateRecursive(c.replies || []) };
     });
@@ -163,7 +190,7 @@ const PostCard = ({ post, currentUser }) => {
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{post.location} • {new Date(post.createdAt).toLocaleDateString()}</p>
           </div>
         </div>
-        {currentUser?.id === post.authorId && (
+        {currentUser?.uid === post.authorId && (
           <div className="relative">
             <button onClick={() => setShowOptions(!showOptions)} className="p-2"><MoreVertical size={18}/></button>
             {showOptions && (
@@ -277,15 +304,15 @@ const PostCard = ({ post, currentUser }) => {
       {post.image && !post.images && <img src={post.image} className="w-full border-y max-h-96 object-cover" />}
 
       <div className="p-2 flex gap-4 relative border-t">
-        <div className="relative" onMouseEnter={() => setShowReactions(true)} onMouseLeave={() => setShowReactions(false)}>
-          <button className={`flex items-center gap-2 px-4 py-2 rounded-full font-black text-sm transition ${userReaction ? REACTIONS.find(r => r.value === userReaction.type).color : 'text-gray-500'}`}>
+        <div className="relative" ref={reactionRef}>
+          <button onClick={handleReactionClick} className={`flex items-center gap-2 px-4 py-2 rounded-full font-black text-sm transition ${userReaction ? REACTIONS.find(r => r.value === userReaction.type).color : 'text-gray-500'}`}>
             {userReaction ? REACTIONS.find(r => r.value === userReaction.type).icon : <ThumbsUp size={18} />}
             {userReaction ? REACTIONS.find(r => r.value === userReaction.type).label : 'Thích'}
           </button>
           {showReactions && (
-            <div className="absolute bottom-full left-0 mb-2 bg-white shadow-2xl border rounded-full px-2 py-1.5 flex gap-3 animate-in fade-in slide-in-from-bottom-2 z-50">
+            <div className="absolute bottom-full left-0 mb-2 bg-white shadow-2xl border rounded-full px-2 py-1.5 flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300 z-50">
               {REACTIONS.map(r => (
-                <button key={r.value} onClick={() => handleReact(r.value)} className="hover:scale-150 transition-transform text-2xl">{r.icon}</button>
+                <button key={r.value} onClick={() => handleReact(r.value)} className="hover:scale-150 transition-all duration-200 text-2xl">{r.icon}</button>
               ))}
             </div>
           )}

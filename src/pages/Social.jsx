@@ -37,12 +37,12 @@ const Social = () => {
   }, []);
 
   const handleCreatePost = async (postData) => {
-    if (!user || !user.id) return alert("Bạn cần đăng nhập!");
+    if (!user || !user.uid) return alert("Bạn cần đăng nhập!");
     try {
       await addDoc(collection(db, 'posts'), {
         ...postData,
         author: user.name || user.email.split('@')[0],
-        authorId: user.id,
+        authorId: user.uid,
         authorAvatar: user.photoURL || '',
         likes: [],
         comments: [],

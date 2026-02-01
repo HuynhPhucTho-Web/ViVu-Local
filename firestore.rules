@@ -48,8 +48,8 @@ service cloud.firestore {
 
       // 2. Cho phép Manager tạo địa điểm mới
       // Điều kiện: Đã đăng nhập và role phải là manager (hoặc admin)
-      allow create: if isSignedIn() 
-        && (hasRole("manager") || isAdmin())
+      allow create: if isSignedIn()
+        && (isManager() || isAdmin())
         && request.resource.data.status == "pending" // Bắt buộc trạng thái đầu vào là chờ duyệt
         && request.resource.data.managerId == request.auth.uid; // Phải đúng UID của mình
 
@@ -152,6 +152,27 @@ service cloud.firestore {
 
       allow delete: if isManager()
         && resource.data.authorId == request.auth.uid;
+    }
+
+    /* ======================
+       📝 SOCIAL POSTS
+       (User-created content)
+    ====================== */
+
+    match /posts/{postId} {
+      allow read: if true; // Public read access
+
+      allow create: if isSignedIn()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.title != ""
+        && request.resource.data.content != ""
+        && request.resource.data.location != "";
+
+      allow update: if isSignedIn()
+        && resource.data.authorId == request.auth.uid;
+
+      allow delete: if isSignedIn()
+        && (resource.data.authorId == request.auth.uid || isAdmin());
     }
 
     /* ======================

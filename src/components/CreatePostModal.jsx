@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Upload, Loader2, MapPin, ImageIcon } from 'lucide-react';
 import { uploadToCloudinary } from '../data/cloudinary';
 import { destinations } from '../data/mockData';
@@ -6,7 +6,6 @@ import { destinations } from '../data/mockData';
 const CreatePostModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   const [formData, setFormData] = useState({ title: '', content: '', location: '', images: [] });
   const [loading, setLoading] = useState(false);
-  const interactionRef = useRef(false);
 
   useEffect(() => {
     if (initialData) {
@@ -19,17 +18,7 @@ const CreatePostModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     }
   }, [initialData, isOpen]);
 
-  // Auto-close modal after 5 seconds if not interacted with
-  useEffect(() => {
-    if (isOpen) {
-      const timer = setTimeout(() => {
-        if (!interactionRef.current) {
-          onClose();
-        }
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, onClose]);
+
 
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files);
