@@ -17,6 +17,14 @@ const ChatbotBubble = () => {
         }
     }, [messages, loading]);
 
+    
+    const preferredModels = [
+        "llama-3.3-70b-versatile",  
+        "llama-3.1-8b-instant",     
+        "mixtral-8x7b-32768",      
+        "gemma2-9b-it",             
+    ];
+
     const handleSend = async () => {
         if (!input.trim() || loading) return;
 
@@ -25,48 +33,47 @@ const ChatbotBubble = () => {
         setInput('');
         setLoading(true);
 
-        const preferredModels = [
-            "gemini-2.5-flash-lite",
-            "gemini-1.5-flash",
-            "gemini-1.5-flash-8b",
-            "gemini-2.0-flash-lite-001"
-        ];
-
         let success = false;
         let errorMessage = "";
+
+        const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
         for (const modelName of preferredModels) {
             if (success) break;
 
             try {
-                const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`;
-
-                const response = await fetch(url, {
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: userContent }] }],
-                        // ĐƯA TRI THỨC VÀO ĐÂY
-                        systemInstruction: {
-                            parts: [{ text: vivuKnowledgeBase }]
-                        },
-                        generationConfig: {
-                            temperature: 0.7,
-                            maxOutputTokens: 800,
-                        }
+                        model: modelName,
+                        messages: [
+                            {
+                                role: "system",
+                                content: vivuKnowledgeBase
+                            },
+                            {
+                                role: "user",
+                                content: userContent
+                            }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 800,
                     })
                 });
 
                 const data = await response.json();
 
-                if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-                    const botReply = data.candidates[0].content.parts[0].text;
+                if (response.ok && data.choices?.[0]?.message?.content) {
+                    const botReply = data.choices[0].message.content;
                     setMessages(prev => [...prev, { text: botReply, isBot: true }]);
                     success = true;
-                } else if (data.error?.message?.includes("quota")) {
-                    console.warn(`Model ${modelName} hết lượt, đang thử model tiếp theo...`);
-                    errorMessage = "Tất cả model miễn phí đều đang bận do quá tải. Bạn thử lại sau vài phút nhé!";
+                } else if (data.error?.message?.includes("rate_limit")) {
+                    console.warn(`Model ${modelName} bị giới hạn, thử model khác...`);
+                    errorMessage = "Hệ thống đang bận, đang chuyển sang model dự phòng...";
                 } else {
                     errorMessage = data.error?.message || "Lỗi hệ thống";
                 }

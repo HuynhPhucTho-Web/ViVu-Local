@@ -52,15 +52,13 @@ const Navbar = () => {
       alert("🎉 Chúc mừng! Bạn đã chính thức trở thành Local Buddy.");
       navigate('/buddy-dashboard');
     }
-  }, [user?.role]); // Lắng nghe sự thay đổi của role
+  }, [user?.role]); 
 
   const navItems = [
     { name: 'Trang Chủ', path: '/' },
     { name: 'Khám Phá', path: '/discovery' },
     { name: 'Cộng Đồng', path: '/social' },
     { name: 'Local Buddy', path: '/buddy' },
-    { name: 'Lập Kế Hoạch', path: '/planner' },
-    { name: 'Đã lưu', path: '/saved-plans' },
   ];
 
   const isActive = (path) => location.pathname === path;
