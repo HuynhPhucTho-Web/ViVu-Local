@@ -26,6 +26,7 @@ import RegisterPartner from './pages/RegisterPartner';
 import RegisterBuddy from './pages/RegisterBuddy';
 import AdminDashboard from './pages/AdminDashboard';
 import BuddyDashboard from './pages/BuddyDashboard';
+import BuddyChat from './pages/BuddyChat';
 import ManagerDashboard from './pages/ManagerDashboard';
 import CreateDestination from './pages/CreateDestination';
 import EditDestination from './pages/EditDestination';
@@ -114,6 +115,14 @@ function AppContent() {
             element={
               <ProtectedRoute allowedRoles={['buddy']}>
                 <BuddyDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/buddy-chat/:userId"
+            element={
+              <ProtectedRoute allowedRoles={['buddy']}>
+                <BuddyChat />
               </ProtectedRoute>
             }
           />

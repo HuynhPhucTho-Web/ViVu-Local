@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
-import { ArrowLeft, Send, MoreVertical, Phone, Video, Image, X, Loader2, MessageCircle } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Send, Image, X, Loader2, User } from 'lucide-react';
 import {
   collection,
   addDoc,
@@ -8,22 +8,20 @@ import {
   orderBy,
   onSnapshot,
   serverTimestamp,
-  where
+  where,
+  getDoc,
+  doc
 } from 'firebase/firestore';
 import { db } from '../components/firebase';
 import { uploadToCloudinary } from '../data/cloudinary';
 import { useAuthStore } from '../store/authStore';
 
-const Chat = () => {
-  const { id: buddyId } = useParams();
-  const location = useLocation();
-  const { user } = useAuthStore();
+const BuddyChat = () => {
+  const { userId } = useParams();
+  const navigate = useNavigate();
+  const { user: buddy } = useAuthStore();
 
-  const buddyName = location.state?.buddyName || 'Buddy';
-  const buddyAvatar =
-    location.state?.buddyAvatar ||
-    'https://ui-avatars.com/api/?name=B&background=random';
-
+  const [userInfo, setUserInfo] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -46,10 +44,32 @@ const Chat = () => {
     return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
   };
 
+  // Lấy thông tin user
   useEffect(() => {
-    if (!user?.uid || !buddyId) return;
+    const fetchUserInfo = async () => {
+      if (!userId) return;
+      try {
+        const userDoc = await getDoc(doc(db, 'users', userId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserInfo({
+            name: userData.name || 'Khách hàng',
+            avatar: userData.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name || 'U')}&background=random`
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching user info:', error);
+      }
+    };
 
-    const chatId = getChatId(user.uid, buddyId);
+    fetchUserInfo();
+  }, [userId]);
+
+  // Lắng nghe tin nhắn
+  useEffect(() => {
+    if (!buddy?.uid || !userId) return;
+
+    const chatId = getChatId(buddy.uid, userId);
 
     const q = query(
       collection(db, 'messages'),
@@ -67,7 +87,7 @@ const Chat = () => {
     });
 
     return () => unsubscribe();
-  }, [user?.uid, buddyId]);
+  }, [buddy?.uid, userId]);
 
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
@@ -89,7 +109,7 @@ const Chat = () => {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!user?.uid) return;
+    if (!buddy?.uid || !userId) return;
 
     const hasText = inputText.trim();
     const hasImage = selectedImage;
@@ -97,14 +117,13 @@ const Chat = () => {
 
     setSending(true);
 
-    const chatId = getChatId(user.uid, buddyId);
-    const tempId = Date.now().toString();
+    const chatId = getChatId(buddy.uid, userId);
 
     const optimisticMessage = {
-      id: tempId,
+      id: Date.now().toString(),
       chatId,
-      senderId: user.uid,
-      receiverId: buddyId,
+      senderId: buddy.uid,
+      receiverId: userId,
       text: hasText || '',
       imageUrl: null,
       createdAt: new Date(),
@@ -126,8 +145,8 @@ const Chat = () => {
 
       await addDoc(collection(db, 'messages'), {
         chatId,
-        senderId: user.uid,
-        receiverId: buddyId,
+        senderId: buddy.uid,
+        receiverId: userId,
         text: hasText || '',
         imageUrl: imageUrl,
         createdAt: serverTimestamp(),
@@ -151,22 +170,21 @@ const Chat = () => {
     <div className="flex flex-col h-[calc(100vh-64px)] bg-gray-100">
       <div className="bg-white px-4 py-3 shadow-sm flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center">
-          <Link to={`/buddy/${buddyId}`} className="mr-3 text-gray-500 hover:text-gray-700">
+          <button onClick={() => navigate(-1)} className="mr-3 text-gray-500 hover:text-gray-700">
             <ArrowLeft className="h-6 w-6" />
-          </Link>
+          </button>
           <div className="relative">
-            <img src={buddyAvatar} alt={buddyName} className="w-10 h-10 rounded-full object-cover" />
+            <img 
+              src={userInfo?.avatar || `https://ui-avatars.com/api/?name=U&background=random`} 
+              alt={userInfo?.name || 'User'} 
+              className="w-10 h-10 rounded-full object-cover" 
+            />
             <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white bg-green-500"></div>
           </div>
           <div className="ml-3">
-            <h3 className="font-bold text-gray-900">{buddyName}</h3>
+            <h3 className="font-bold text-gray-900">{userInfo?.name || 'Khách hàng'}</h3>
             <p className="text-xs text-gray-500">Đang hoạt động</p>
           </div>
-        </div>
-        <div className="flex items-center space-x-4 text-orange-500">
-          <button><Phone className="h-5 w-5" /></button>
-          <button><Video className="h-5 w-5" /></button>
-          <button><MoreVertical className="h-5 w-5 text-gray-500" /></button>
         </div>
       </div>
 
@@ -177,13 +195,17 @@ const Chat = () => {
           </div>
         ) : (
           messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.senderId === user?.uid ? 'justify-end' : 'justify-start'}`}>
-              {msg.senderId !== user?.uid && (
-                <img src={buddyAvatar} alt={buddyName} className="w-8 h-8 rounded-full object-cover mr-2 self-end mb-1" />
+            <div key={msg.id} className={`flex ${msg.senderId === buddy?.uid ? 'justify-end' : 'justify-start'}`}>
+              {msg.senderId !== buddy?.uid && (
+                <img 
+                  src={userInfo?.avatar || `https://ui-avatars.com/api/?name=U&background=random`} 
+                  alt={userInfo?.name || 'User'} 
+                  className="w-8 h-8 rounded-full object-cover mr-2 self-end mb-1" 
+                />
               )}
               <div
                 className={`max-w-[70%] px-4 py-2 rounded-2xl ${
-                  msg.senderId === user?.uid
+                  msg.senderId === buddy?.uid
                     ? 'bg-orange-500 text-white rounded-br-none'
                     : 'bg-white text-gray-800 rounded-bl-none shadow-sm'
                 }`}
@@ -196,7 +218,7 @@ const Chat = () => {
                   />
                 )}
                 {msg.text && <p>{msg.text}</p>}
-                <p className={`text-[10px] mt-1 text-right ${msg.senderId === user?.uid ? 'text-orange-100' : 'text-gray-400'}`}>
+                <p className={`text-[10px] mt-1 text-right ${msg.senderId === buddy?.uid ? 'text-orange-100' : 'text-gray-400'}`}>
                   {formatTime(msg)}
                 </p>
               </div>
@@ -257,4 +279,4 @@ const Chat = () => {
   );
 };
 
-export default Chat;
+export default BuddyChat;

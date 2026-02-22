@@ -4,11 +4,12 @@ import { CheckCircle, Calendar, MessageCircle, Wallet, UserCircle, Settings } fr
 import BookingList from '../components/buddy/BookingList';
 import BuddyWallet from '../components/buddy/BuddyWallet';
 import BuddyProfileEdit from '../components/buddy/BuddyProfileEdit';
+import BuddyMessages from '../components/buddy/BuddyMessages';
 
 const BuddyDashboard = () => {
   const { user } = useAuthStore();
   const [isAvailable, setIsAvailable] = useState(true);
-  const [activeTab, setActiveTab] = useState('bookings'); // bookings, wallet, profile
+  const [activeTab, setActiveTab] = useState('bookings'); // bookings, wallet, profile, messages
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
@@ -51,6 +52,7 @@ const BuddyDashboard = () => {
           {/* Sidebar Menu */}
           <div className="w-full md:w-64 space-y-2">
             <MenuBtn active={activeTab === 'bookings'} onClick={() => setActiveTab('bookings')} icon={<Calendar size={20}/>} label="Quản lý lịch đặt" />
+            <MenuBtn active={activeTab === 'messages'} onClick={() => setActiveTab('messages')} icon={<MessageCircle size={20}/>} label="Tin nhắn" />
             <MenuBtn active={activeTab === 'wallet'} onClick={() => setActiveTab('wallet')} icon={<Wallet size={20}/>} label="Ví thu nhập" />
             <MenuBtn active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} icon={<UserCircle size={20}/>} label="Hồ sơ cá nhân" />
           </div>
@@ -58,6 +60,7 @@ const BuddyDashboard = () => {
           {/* Dynamic Component Rendering */}
           <div className="flex-1">
             {activeTab === 'bookings' && <BookingList />}
+            {activeTab === 'messages' && <BuddyMessages />}
             {activeTab === 'wallet' && <BuddyWallet />}
             {activeTab === 'profile' && <BuddyProfileEdit />}
           </div>

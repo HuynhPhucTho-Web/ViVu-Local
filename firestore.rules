@@ -127,21 +127,24 @@ service cloud.firestore {
         && request.auth.uid in resource.data.participants;
     }
 
-    // Tin nhắn chat giữa user và buddy
     match /messages/{messageId} {
-      // Đọc tin nhắn: chỉ người tham gia cuộc trò chuyện mới được đọc
-      allow read: if isSignedIn()
-        && (
-          resource.data.senderId == request.auth.uid
-          || resource.data.receiverId == request.auth.uid
-        );
-      
-      // Tạo tin nhắn mới: chỉ người gửi được tạo
-      allow create: if isSignedIn()
-        && request.resource.data.senderId == request.auth.uid
-        && request.resource.data.receiverId != null
-        && request.resource.data.createdAt != null;
-    }
+
+  function getChatId(uid1, uid2) {
+    return uid1 < uid2 ? uid1 + '_' + uid2 : uid2 + '_' + uid1;
+  }
+
+  allow read: if isSignedIn()
+    && (
+      resource.data.senderId == request.auth.uid
+      || resource.data.receiverId == request.auth.uid
+    );
+
+  allow create: if isSignedIn()
+    && request.resource.data.senderId == request.auth.uid
+    && request.resource.data.receiverId != null
+    && request.resource.data.chatId ==
+        getChatId(request.auth.uid, request.resource.data.receiverId);
+}
 
     /* ======================
        🤖 CHATBOT HISTORY
